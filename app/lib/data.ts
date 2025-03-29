@@ -40,7 +40,7 @@ export const standardRates: StandardRate[] = [
 
 // Predefined packages from CityBee
 export const cityBeePackages: Package[] = [
-  { provider: 'CityBee', time: 30, distance: 5, price: 3.99, name: '30min+5km' },
+  { provider: 'CityBee', time: 30, distance: 5, price: 5.29, name: '30min+5km' },
   { provider: 'CityBee', time: 30, distance: 10, price: 6.29, name: '30min+10km' },
   { provider: 'CityBee', time: 60, distance: 25, price: 12.09, name: '1h+25km' },
   { provider: 'CityBee', time: 120, distance: 20, price: 15.69, name: '2h+20km' },
@@ -301,18 +301,22 @@ export const generateChartData = (packages: Package[], property: 'time' | 'dista
     x: pkg[property],
     y: pkg.price,
     r: property === 'time' ? pkg.distance / 10 : pkg.time / 60,
-    name: pkg.name
+    name: pkg.name,
+    time: pkg.time,
+    distance: pkg.distance
   }));
 
   const boltData = boltPackages.map(pkg => ({
     x: pkg[property],
     y: pkg.price,
     r: property === 'time' ? pkg.distance / 10 : pkg.time / 60,
-    name: pkg.name
+    name: pkg.name,
+    time: pkg.time,
+    distance: pkg.distance
   }));
 
   return {
     cityBeeData,
     boltData
   };
-}; 
+};
