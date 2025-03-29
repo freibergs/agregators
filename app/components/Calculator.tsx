@@ -85,12 +85,12 @@ const Calculator: React.FC = () => {
                           ? 'scale-105' 
                           : 'hover:bg-gray-50/50'
                       }`}>
-                        <div className="w-[120px] h-[60px] relative">
+                        <div className="w-[60px] h-[30px] relative">
                           <Image
                             src={provider.image}
                             alt={provider.id}
                             fill
-                            sizes="120px"
+                            sizes="60px"
                             className={`transition-opacity object-contain ${
                               value ? 'opacity-100' : 'opacity-50 group-hover:opacity-75'
                             }`}
