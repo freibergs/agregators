@@ -521,39 +521,8 @@ export const formatTimeAxisLabel = (minutes: number): string => {
 
 // Generate points for standard pricing line
 export const generateStandardPriceData = (property: 'time' | 'distance') => {
-  const { maxTime, maxDistance } = getMaxValues();
-  const maxValue = property === 'time' ? maxTime : maxDistance;
-
-  const getStepSize = (currentValue: number): number => {
-    if (property === 'time') {
-      if (currentValue < 60) return 5; // 5-minute steps for first hour
-      if (currentValue < 180) return 15; // 15-minute steps up to 3 hours
-      if (currentValue < 720) return 30; // 30-minute steps up to 12 hours
-      if (currentValue < 1440) return 60; // 1-hour steps up to 1 day
-      return 120; // 2-hour steps beyond 1 day
-    } else {
-      if (currentValue < 50) return 2; // 2km steps up to 50km
-      if (currentValue < 200) return 5; // 5km steps up to 200km
-      return 10; // 10km steps beyond 200km
-    }
-  };
-
-  // Get critical time points that should always be included
-  const getCriticalPoints = (): number[] => {
-    if (property !== 'time') return [];
-    return [
-      60, // 1h
-      120, 180, 240, 300, 360, // Hour boundaries up to 6h
-      720, // 12h
-      1440, // 1d
-      2880, // 2d
-      4320, // 3d
-      7200, // 5d
-      10080, // 7d
-      20160, // 14d
-      40320  // 28d
-    ].filter(point => point <= maxValue);
-  };
+  const maxValue = property === 'time' ? 4350 : 501;
+  const step = 1; // Every 1min or 1km for precise lines
 
   const generatePoints = (provider: 'CityBee' | 'Bolt' | 'CarGuru') => {
     const points: Array<{x: number, y: number}> = [];
@@ -566,37 +535,59 @@ export const generateStandardPriceData = (property: 'time' | 'distance') => {
       y: rate.minPrice
     });
 
-    const criticalPoints = new Set(getCriticalPoints());
-    let currentValue = 0;
-
-    while (currentValue <= maxValue) {
-      const step = getStepSize(currentValue);
-      currentValue += step;
-
-      // Skip if we've gone past maxValue
-      if (currentValue > maxValue) break;
-
+    // Generate rest of the points
+    for (let x = step; x <= maxValue; x += step) {
       let basePrice;
       if (property === 'time') {
         // For time graph, calculate all possible pricing methods
-        const byMinutes = currentValue * rate.minuteRate;
+        const byMinutes = x * rate.minuteRate;
         
         // Hour calculation
-        const fullHours = Math.floor(currentValue / 60);
-        const remainingMinutes = currentValue % 60;
-        const byHours = (fullHours * rate.hourRate) + (remainingMinutes * rate.minuteRate);
+        const fullHours = Math.floor(x / 60);
+        const remainingMinutes = x % 60;
+        let byHours;
+
+        // If we have full hours, calculate their cost
+        if (fullHours > 0) {
+          byHours = fullHours * rate.hourRate;
+          // Add remaining minutes at minute rate
+          byHours += remainingMinutes * rate.minuteRate;
+        } else {
+          // For partial hours, compare minute rate vs hour rate
+          byHours = Math.min(
+            remainingMinutes * rate.minuteRate,
+            rate.hourRate
+          );
+        }
         
         // Day calculation
-        const fullDays = Math.floor(currentValue / 1440);
-        const remainingTime = currentValue % 1440;
+        const fullDays = Math.floor(x / 1440);
+        const remainingTime = x % 1440;
         const remainingHours = Math.ceil(remainingTime / 60);
-        const byDays = (fullDays * rate.dayRate) + (remainingHours * rate.hourRate);
+        let byDays;
+
+        if (fullDays > 0) {
+          byDays = fullDays * rate.dayRate;
+          // For remaining time, compare hour rate vs day rate
+          if (remainingHours > 0) {
+            byDays += Math.min(
+              remainingHours * rate.hourRate,
+              rate.dayRate
+            );
+          }
+        } else {
+          // For partial days, compare hour total vs day rate
+          byDays = Math.min(
+            remainingHours * rate.hourRate,
+            rate.dayRate
+          );
+        }
         
         // Use the cheapest rate that doesn't make the price go down
         if (points.length > 1) {
           const lastPrice = points[points.length - 1].y;
           basePrice = Math.max(
-            lastPrice - rate.fixedFee,
+            lastPrice - rate.fixedFee, // Ensure we don't go below last price
             Math.min(byMinutes, byHours, byDays)
           );
         } else {
@@ -604,25 +595,15 @@ export const generateStandardPriceData = (property: 'time' | 'distance') => {
         }
       } else {
         // For distance graph, only consider distance-based pricing
-        basePrice = currentValue * rate.kmRate;
+        basePrice = x * rate.kmRate;
       }
 
       // Add fixed fee and compare with minPrice
       const calculatedPrice = basePrice + rate.fixedFee;
       points.push({
-        x: currentValue,
+        x,
         y: calculatedPrice > rate.minPrice ? calculatedPrice : rate.minPrice
       });
-
-      // Check if we need to include the next critical point
-      if (property === 'time') {
-        const nextCriticalPoint = Array.from(criticalPoints)
-          .find(point => point > currentValue && point < currentValue + step);
-        
-        if (nextCriticalPoint) {
-          currentValue = nextCriticalPoint - step; // Will be increased by step in next iteration
-        }
-      }
     }
 
     return points;
