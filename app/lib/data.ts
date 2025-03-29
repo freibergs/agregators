@@ -521,7 +521,8 @@ export const formatTimeAxisLabel = (minutes: number): string => {
 
 // Generate points for standard pricing line
 export const generateStandardPriceData = (property: 'time' | 'distance') => {
-  const maxValue = property === 'time' ? 4350 : 501;
+  const { maxTime, maxDistance } = getMaxValues();
+  const maxValue = property === 'time' ? maxTime : maxDistance;
 
   const generatePoints = (provider: 'CityBee' | 'Bolt' | 'CarGuru') => {
     const points: Array<{x: number, y: number}> = [];
@@ -545,7 +546,7 @@ export const generateStandardPriceData = (property: 'time' | 'distance') => {
         1440, // 1 day
         2880, // 2 days
         4320, // 3 days
-        maxValue // End point
+        maxValue // End point (max package time + 5%)
       ];
 
       // Add points at each critical time
