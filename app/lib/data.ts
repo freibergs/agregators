@@ -283,78 +283,131 @@ export const calculateExtraCharges = (
 // Find the best package for a given trip
 export const findBestPackage = (
   timeInMinutes: number,
-  distanceInKm: number
+  distanceInKm: number,
+  selectedProviders: ('CityBee' | 'Bolt' | 'CarGuru')[]
 ): { 
-  bestPackage: Package | null, 
-  totalPrice: number, 
-  extraCharge: number, 
-  standardPrice: { citybee: number, bolt: number, carguru: number } 
+  bestOverall: {
+    type: 'package' | 'standard';
+    provider: 'CityBee' | 'Bolt' | 'CarGuru';
+    package?: Package;
+    price: number;
+    extraCharge: number;
+  };
+  bestByProvider: {
+    [key in 'CityBee' | 'Bolt' | 'CarGuru']?: {
+      bestPackage: Package | null;
+      bestStandard: number;
+      totalPrice: number;
+      extraCharge: number;
+    };
+  };
 } => {
   console.log('\n=== findBestPackage ===');
   console.log(`Searching for: ${timeInMinutes}min, ${distanceInKm}km`);
+  console.log(`Selected providers: ${selectedProviders.join(', ')}`);
 
-  // Calculate standard prices
-  const cityBeeStandardPrice = calculateStandardPrice('CityBee', timeInMinutes, distanceInKm);
-  const boltStandardPrice = calculateStandardPrice('Bolt', timeInMinutes, distanceInKm);
-  const carguruStandardPrice = calculateStandardPrice('CarGuru', timeInMinutes, distanceInKm);
-  const standardPrices = { 
-    citybee: cityBeeStandardPrice, 
-    bolt: boltStandardPrice,
-    carguru: carguruStandardPrice 
-  };
+  // Calculate standard prices for selected providers
+  const standardPrices = Object.fromEntries(
+    selectedProviders.map(provider => [
+      provider,
+      calculateStandardPrice(provider, timeInMinutes, distanceInKm)
+    ])
+  ) as { [key in 'CityBee' | 'Bolt' | 'CarGuru']?: number };
 
   console.log('\nStandard prices:');
-  console.log(`CityBee: ${cityBeeStandardPrice.toFixed(2)}`);
-  console.log(`Bolt: ${boltStandardPrice.toFixed(2)}`);
-  console.log(`CarGuru: ${carguruStandardPrice.toFixed(2)}`);
+  Object.entries(standardPrices).forEach(([provider, price]) => {
+    console.log(`${provider}: ${price.toFixed(2)}`);
+  });
 
-  // Start with standard pricing as the benchmark
-  let bestPrice = Math.min(cityBeeStandardPrice, boltStandardPrice, carguruStandardPrice);
-  let bestPackage: Package | null = null;
-  let bestExtraCharge = 0;
+  // Initialize best results for each provider
+  const bestByProvider: { [key: string]: any } = {};
+  let bestOverallPrice = Infinity;
+  let bestOverall = {
+    type: 'standard' as const,
+    provider: selectedProviders[0],
+    price: Infinity,
+    extraCharge: 0
+  };
 
-  console.log(`\nInitial best price (standard): ${bestPrice.toFixed(2)}`);
-
-  // Check each package
-  allPackages.forEach(pkg => {
-    console.log(`\nChecking package: ${pkg.name} (${pkg.price.toFixed(2)}€)`);
-    
-    // Calculate extra charges if we exceed package limits
-    const extraCharge = calculateExtraCharges(
-      pkg.provider,
-      pkg.time,
-      pkg.distance,
-      timeInMinutes,
-      distanceInKm
-    );
-    
-    const totalPackagePrice = pkg.price + extraCharge;
-    console.log(`Total package price: ${pkg.price.toFixed(2)} + ${extraCharge.toFixed(2)} = ${totalPackagePrice.toFixed(2)}`);
-
-    // Compare with standard price for this provider
-    const standardPrice = standardPrices[pkg.provider.toLowerCase() as keyof typeof standardPrices];
-    console.log(`Comparing with standard price: ${standardPrice.toFixed(2)}`);
-    console.log(`Comparing with current best: ${bestPrice.toFixed(2)}`);
-    
-    // Only use package if it's cheaper than both standard price and current best price
-    if (totalPackagePrice < standardPrice && totalPackagePrice < bestPrice) {
-      console.log(`Found new best package!`);
-      bestPrice = totalPackagePrice;
-      bestPackage = pkg;
-      bestExtraCharge = extraCharge;
+  // Find best standard price
+  Object.entries(standardPrices).forEach(([provider, price]) => {
+    if (price < bestOverallPrice) {
+      bestOverallPrice = price;
+      bestOverall = {
+        type: 'standard',
+        provider: provider as 'CityBee' | 'Bolt' | 'CarGuru',
+        price: price,
+        extraCharge: 0
+      };
     }
   });
 
-  console.log('\n=== Final Result ===');
-  console.log(`Best package: ${bestPackage?.name || 'Standard pricing'}`);
-  console.log(`Total price: ${bestPrice.toFixed(2)}`);
-  console.log(`Extra charge: ${bestExtraCharge.toFixed(2)}`);
+  // Process each provider separately
+  selectedProviders.forEach(provider => {
+    const standardPrice = standardPrices[provider] || Infinity;
+    let bestProviderPackage: Package | null = null;
+    let bestProviderPrice = standardPrice;
+    let bestProviderExtraCharge = 0;
 
+    // Filter packages for current provider
+    const providerPackages = allPackages.filter(pkg => pkg.provider === provider);
+    
+    // Check each package for this provider
+    providerPackages.forEach(pkg => {
+      console.log(`\nChecking ${provider} package: ${pkg.name} (${pkg.price.toFixed(2)}€)`);
+      
+      const extraCharge = calculateExtraCharges(
+        provider,
+        pkg.time,
+        pkg.distance,
+        timeInMinutes,
+        distanceInKm
+      );
+      
+      const totalPackagePrice = pkg.price + extraCharge;
+      console.log(`Total package price: ${pkg.price.toFixed(2)} + ${extraCharge.toFixed(2)} = ${totalPackagePrice.toFixed(2)}`);
+
+      // Update best package for this provider
+      if (totalPackagePrice < bestProviderPrice) {
+        bestProviderPackage = pkg;
+        bestProviderPrice = totalPackagePrice;
+        bestProviderExtraCharge = extraCharge;
+      }
+
+      // Update overall best if this is better
+      if (totalPackagePrice < bestOverallPrice) {
+        bestOverallPrice = totalPackagePrice;
+        bestOverall = {
+          type: 'package',
+          provider: provider,
+          package: pkg,
+          price: totalPackagePrice,
+          extraCharge: extraCharge
+        };
+      }
+    });
+
+    // Store best results for this provider
+    bestByProvider[provider] = {
+      bestPackage: bestProviderPackage,
+      bestStandard: standardPrice,
+      totalPrice: Math.min(bestProviderPrice, standardPrice),
+      extraCharge: bestProviderExtraCharge
+    };
+  });
+
+  console.log('\n=== Final Result ===');
+  console.log(`Best overall: ${bestOverall.type === 'package' ? bestOverall.package?.name : 'Standard'} from ${bestOverall.provider}`);
+  console.log(`Best overall price: ${bestOverall.price.toFixed(2)}`);
+  
   return {
-    bestPackage,
-    totalPrice: bestPrice,
-    extraCharge: bestExtraCharge,
-    standardPrice: standardPrices
+    bestOverall,
+    bestByProvider: bestByProvider as { [key in 'CityBee' | 'Bolt' | 'CarGuru']?: {
+      bestPackage: Package | null;
+      bestStandard: number;
+      totalPrice: number;
+      extraCharge: number;
+    }}
   };
 };
 
