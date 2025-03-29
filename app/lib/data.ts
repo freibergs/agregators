@@ -233,9 +233,10 @@ export const calculateStandardPrice = (
   );
 
   const distancePrice = distanceInKm * rate.kmRate;
-  const totalPrice = rate.fixedFee + timePrice + distancePrice;
+  const calculatedPrice = rate.fixedFee + timePrice + distancePrice;
   
-  return Math.max(totalPrice, rate.minPrice);
+  // Only use the calculated price if it's higher than minPrice
+  return calculatedPrice > rate.minPrice ? calculatedPrice : rate.minPrice;
 };
 
 // Calculate extra charges for package overages
@@ -497,5 +498,139 @@ export const generateChartData = (packages: Package[], property: 'time' | 'dista
     cityBeeData,
     boltData,
     carGuruData
+  };
+};
+
+// Get maximum values from packages with 5% buffer
+export const getMaxValues = () => {
+  const maxTime = Math.max(...allPackages.map(pkg => pkg.time));
+  const maxDistance = Math.max(...allPackages.map(pkg => pkg.distance));
+  
+  return {
+    maxTime: Math.ceil(maxTime * 1.05), // Add 5% buffer
+    maxDistance: Math.ceil(maxDistance * 1.05) // Add 5% buffer
+  };
+};
+
+// Format time for axis labels
+export const formatTimeAxisLabel = (minutes: number): string => {
+  if (minutes < 60) return `${minutes}min`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h`;
+  return `${Math.floor(minutes / 1440)}d`;
+};
+
+// Generate points for standard pricing line
+export const generateStandardPriceData = (property: 'time' | 'distance') => {
+  const { maxTime, maxDistance } = getMaxValues();
+  const maxValue = property === 'time' ? maxTime : maxDistance;
+
+  const getStepSize = (currentValue: number): number => {
+    if (property === 'time') {
+      if (currentValue < 60) return 5; // 5-minute steps for first hour
+      if (currentValue < 180) return 15; // 15-minute steps up to 3 hours
+      if (currentValue < 720) return 30; // 30-minute steps up to 12 hours
+      if (currentValue < 1440) return 60; // 1-hour steps up to 1 day
+      return 120; // 2-hour steps beyond 1 day
+    } else {
+      if (currentValue < 50) return 2; // 2km steps up to 50km
+      if (currentValue < 200) return 5; // 5km steps up to 200km
+      return 10; // 10km steps beyond 200km
+    }
+  };
+
+  // Get critical time points that should always be included
+  const getCriticalPoints = (): number[] => {
+    if (property !== 'time') return [];
+    return [
+      60, // 1h
+      120, 180, 240, 300, 360, // Hour boundaries up to 6h
+      720, // 12h
+      1440, // 1d
+      2880, // 2d
+      4320, // 3d
+      7200, // 5d
+      10080, // 7d
+      20160, // 14d
+      40320  // 28d
+    ].filter(point => point <= maxValue);
+  };
+
+  const generatePoints = (provider: 'CityBee' | 'Bolt' | 'CarGuru') => {
+    const points: Array<{x: number, y: number}> = [];
+    const rate = standardRates.find(r => r.provider === provider);
+    if (!rate) return points;
+
+    // Always start with minPrice at (0,0)
+    points.push({
+      x: 0,
+      y: rate.minPrice
+    });
+
+    const criticalPoints = new Set(getCriticalPoints());
+    let currentValue = 0;
+
+    while (currentValue <= maxValue) {
+      const step = getStepSize(currentValue);
+      currentValue += step;
+
+      // Skip if we've gone past maxValue
+      if (currentValue > maxValue) break;
+
+      let basePrice;
+      if (property === 'time') {
+        // For time graph, calculate all possible pricing methods
+        const byMinutes = currentValue * rate.minuteRate;
+        
+        // Hour calculation
+        const fullHours = Math.floor(currentValue / 60);
+        const remainingMinutes = currentValue % 60;
+        const byHours = (fullHours * rate.hourRate) + (remainingMinutes * rate.minuteRate);
+        
+        // Day calculation
+        const fullDays = Math.floor(currentValue / 1440);
+        const remainingTime = currentValue % 1440;
+        const remainingHours = Math.ceil(remainingTime / 60);
+        const byDays = (fullDays * rate.dayRate) + (remainingHours * rate.hourRate);
+        
+        // Use the cheapest rate that doesn't make the price go down
+        if (points.length > 1) {
+          const lastPrice = points[points.length - 1].y;
+          basePrice = Math.max(
+            lastPrice - rate.fixedFee,
+            Math.min(byMinutes, byHours, byDays)
+          );
+        } else {
+          basePrice = Math.min(byMinutes, byHours, byDays);
+        }
+      } else {
+        // For distance graph, only consider distance-based pricing
+        basePrice = currentValue * rate.kmRate;
+      }
+
+      // Add fixed fee and compare with minPrice
+      const calculatedPrice = basePrice + rate.fixedFee;
+      points.push({
+        x: currentValue,
+        y: calculatedPrice > rate.minPrice ? calculatedPrice : rate.minPrice
+      });
+
+      // Check if we need to include the next critical point
+      if (property === 'time') {
+        const nextCriticalPoint = Array.from(criticalPoints)
+          .find(point => point > currentValue && point < currentValue + step);
+        
+        if (nextCriticalPoint) {
+          currentValue = nextCriticalPoint - step; // Will be increased by step in next iteration
+        }
+      }
+    }
+
+    return points;
+  };
+
+  return {
+    cityBeeStandardLine: generatePoints('CityBee'),
+    boltStandardLine: generatePoints('Bolt'),
+    carGuruStandardLine: generatePoints('CarGuru')
   };
 };

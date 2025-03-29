@@ -14,7 +14,7 @@ import {
   Title,
 } from 'chart.js';
 import { Scatter } from 'react-chartjs-2';
-import { generateChartData } from '../lib/data';
+import { generateChartData, generateStandardPriceData } from '../lib/data';
 import { formatTime } from '../lib/data';
 
 ChartJS.register(
@@ -50,6 +50,7 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
 
   useEffect(() => {
     const { cityBeeData, boltData, carGuruData } = generateChartData([], type);
+    const { cityBeeStandardLine, boltStandardLine, carGuruStandardLine } = generateStandardPriceData(type);
 
     setChartData({
       datasets: [
@@ -58,22 +59,62 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
           data: cityBeeData,
           backgroundColor: 'rgba(255, 99, 0, 0.6)',
           borderColor: 'rgb(255, 99, 0)',
-          borderWidth: 1,
+          borderWidth: 1
         },
         {
           label: 'Bolt',
           data: boltData,
           backgroundColor: 'rgba(75, 192, 0, 0.6)',
           borderColor: 'rgb(75, 192, 0)',
-          borderWidth: 1,
+          borderWidth: 1
         },
         {
           label: 'CarGuru',
           data: carGuruData,
           backgroundColor: 'rgba(0, 99, 255, 0.6)',
           borderColor: 'rgb(0, 99, 255)',
-          borderWidth: 1,
+          borderWidth: 1
         },
+        // Standard price lines
+        {
+          label: 'CityBee Standard',
+          data: cityBeeStandardLine,
+          borderColor: 'rgb(255, 99, 0)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          pointRadius: 0,
+          type: 'line',
+          showLine: true,
+          hidden: false,
+          legend: { display: false }
+        },
+        {
+          label: 'Bolt Standard',
+          data: boltStandardLine,
+          borderColor: 'rgb(75, 192, 0)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          pointRadius: 0,
+          type: 'line',
+          showLine: true,
+          hidden: false,
+          legend: { display: false }
+        },
+        {
+          label: 'CarGuru Standard',
+          data: carGuruStandardLine,
+          borderColor: 'rgb(0, 99, 255)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          pointRadius: 0,
+          type: 'line',
+          showLine: true,
+          hidden: false,
+          legend: { display: false }
+        }
       ],
     });
   }, [type]);
@@ -129,12 +170,17 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
           }
         }
       },
+      legend: {
+        labels: {
+          filter: (item: any) => !item.text.includes('Standard')
+        }
+      },
       zoom: {
         zoom: {
           wheel: { enabled: true },
           pinch: { enabled: true },
-          mode: 'xy',
-          onZoom: ({ chart }) => {
+          mode: 'xy' as const,
+          onZoom: ({ chart }: { chart: ChartJS }) => {
             const x = chart.scales.x;
             const y = chart.scales.y;
     
@@ -152,8 +198,7 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
           y: { min: 0 },
         },
       },
-    }
-    ,
+    },
     responsive: true,
     maintainAspectRatio: false,
   };
