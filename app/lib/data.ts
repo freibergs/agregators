@@ -221,7 +221,13 @@ export const calculateExtraCharges = (
   actualTime: number,
   actualDistance: number
 ): number => {
+  console.log('\n=== calculateExtraCharges ===');
+  console.log(`Provider: ${provider}`);
+  console.log(`Package: ${packageTime}min, ${packageDistance}km`);
+  console.log(`Actual: ${actualTime}min, ${actualDistance}km`);
+
   if (actualTime <= packageTime && actualDistance <= packageDistance) {
+    console.log('No extra charges needed');
     return 0;
   }
 
@@ -230,32 +236,47 @@ export const calculateExtraCharges = (
 
   let extraCharge = 0;
 
-  // Extra time charges
+  // Calculate extra time charges
   if (actualTime > packageTime) {
     const extraMinutes = actualTime - packageTime;
-    const extraDays = Math.floor(extraMinutes / 1440);
-    const remainingExtraMinutes = extraMinutes % 1440;
-    const extraHours = Math.floor(remainingExtraMinutes / 60);
-    const extraMins = remainingExtraMinutes % 60;
+    console.log(`\nExtra time: ${extraMinutes} minutes`);
+    
+    // Calculate using minutes
+    const byMinutePrice = extraMinutes * rate.minuteRate;
+    console.log(`By minute rate (${rate.minuteRate}): ${byMinutePrice.toFixed(2)}`);
 
-    if (extraDays > 0) {
-      extraCharge += extraDays * rate.dayRate;
-    }
+    // Calculate using hours
+    const totalHours = Math.floor(extraMinutes / 60);
+    const leftoverMinutes = extraMinutes % 60;
+    const byHourPrice = (totalHours * rate.hourRate) + (leftoverMinutes * rate.minuteRate);
+    console.log(`By hour rate (${rate.hourRate}): ${byHourPrice.toFixed(2)} (${totalHours}h + ${leftoverMinutes}min)`);
 
-    if (extraHours > 0) {
-      const hourPrice = extraHours * rate.hourRate;
-      const minutesPrice = extraHours * 60 * rate.minuteRate;
-      extraCharge += Math.min(hourPrice, minutesPrice);
-    }
+    // Calculate using days
+    const days = Math.floor(extraMinutes / 1440);
+    const remainingMinutes = extraMinutes % 1440;
+    const remainingHours = Math.floor(remainingMinutes / 60);
+    const finalMinutes = remainingMinutes % 60;
+    const byDayPrice = 
+      (days * rate.dayRate) +
+      (remainingHours * Math.min(rate.hourRate, remainingHours * 60 * rate.minuteRate)) +
+      (finalMinutes * rate.minuteRate);
+    console.log(`By day rate (${rate.dayRate}): ${byDayPrice.toFixed(2)} (${days}d + ${remainingHours}h + ${finalMinutes}min)`);
 
-    extraCharge += extraMins * rate.minuteRate;
+    const timeCharge = Math.min(byMinutePrice, byHourPrice, byDayPrice);
+    console.log(`Best time charge: ${timeCharge.toFixed(2)}`);
+    extraCharge += timeCharge;
   }
 
-  // Extra distance charges
+  // Calculate extra distance charges
   if (actualDistance > packageDistance) {
-    extraCharge += (actualDistance - packageDistance) * rate.kmRate;
+    const extraDistance = actualDistance - packageDistance;
+    const distanceCharge = extraDistance * rate.kmRate;
+    console.log(`\nExtra distance: ${extraDistance}km at rate ${rate.kmRate}`);
+    console.log(`Distance charge: ${distanceCharge.toFixed(2)}`);
+    extraCharge += distanceCharge;
   }
 
+  console.log(`\nTotal extra charge: ${extraCharge.toFixed(2)}`);
   return extraCharge;
 };
 
@@ -269,6 +290,9 @@ export const findBestPackage = (
   extraCharge: number, 
   standardPrice: { citybee: number, bolt: number, carguru: number } 
 } => {
+  console.log('\n=== findBestPackage ===');
+  console.log(`Searching for: ${timeInMinutes}min, ${distanceInKm}km`);
+
   // Calculate standard prices
   const cityBeeStandardPrice = calculateStandardPrice('CityBee', timeInMinutes, distanceInKm);
   const boltStandardPrice = calculateStandardPrice('Bolt', timeInMinutes, distanceInKm);
@@ -279,13 +303,23 @@ export const findBestPackage = (
     carguru: carguruStandardPrice 
   };
 
+  console.log('\nStandard prices:');
+  console.log(`CityBee: ${cityBeeStandardPrice.toFixed(2)}`);
+  console.log(`Bolt: ${boltStandardPrice.toFixed(2)}`);
+  console.log(`CarGuru: ${carguruStandardPrice.toFixed(2)}`);
+
   // Start with standard pricing as the benchmark
   let bestPrice = Math.min(cityBeeStandardPrice, boltStandardPrice, carguruStandardPrice);
   let bestPackage: Package | null = null;
   let bestExtraCharge = 0;
 
+  console.log(`\nInitial best price (standard): ${bestPrice.toFixed(2)}`);
+
   // Check each package
   allPackages.forEach(pkg => {
+    console.log(`\nChecking package: ${pkg.name} (${pkg.price.toFixed(2)}€)`);
+    
+    // Calculate extra charges if we exceed package limits
     const extraCharge = calculateExtraCharges(
       pkg.provider,
       pkg.time,
@@ -295,13 +329,26 @@ export const findBestPackage = (
     );
     
     const totalPackagePrice = pkg.price + extraCharge;
+    console.log(`Total package price: ${pkg.price.toFixed(2)} + ${extraCharge.toFixed(2)} = ${totalPackagePrice.toFixed(2)}`);
+
+    // Compare with standard price for this provider
+    const standardPrice = standardPrices[pkg.provider.toLowerCase() as keyof typeof standardPrices];
+    console.log(`Comparing with standard price: ${standardPrice.toFixed(2)}`);
+    console.log(`Comparing with current best: ${bestPrice.toFixed(2)}`);
     
-    if (totalPackagePrice < bestPrice) {
+    // Only use package if it's cheaper than both standard price and current best price
+    if (totalPackagePrice < standardPrice && totalPackagePrice < bestPrice) {
+      console.log(`Found new best package!`);
       bestPrice = totalPackagePrice;
       bestPackage = pkg;
       bestExtraCharge = extraCharge;
     }
   });
+
+  console.log('\n=== Final Result ===');
+  console.log(`Best package: ${bestPackage?.name || 'Standard pricing'}`);
+  console.log(`Total price: ${bestPrice.toFixed(2)}`);
+  console.log(`Extra charge: ${bestExtraCharge.toFixed(2)}`);
 
   return {
     bestPackage,
