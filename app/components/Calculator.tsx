@@ -7,6 +7,7 @@ import { FaClock, FaRoad } from 'react-icons/fa';
 import Image from 'next/image';
 
 interface FormInputs {
+  days: number;
   hours: number;
   minutes: number;
   distance: number;
@@ -18,6 +19,7 @@ interface FormInputs {
 const Calculator: React.FC = () => {
   const { control, handleSubmit, watch, formState: { errors } } = useForm<FormInputs>({
     defaultValues: {
+      days: 0,
       hours: 0,
       minutes: 0,
       distance: 0,
@@ -30,24 +32,30 @@ const Calculator: React.FC = () => {
   });
 
   const [result, setResult] = React.useState<ReturnType<typeof findBestPackage> | null>(null);
+  const [isCalculating, setIsCalculating] = React.useState(false);
 
-  const onSubmit = (data: FormInputs) => {
-    const totalMinutes = (data.hours * 60) + data.minutes;
+  const onSubmit = async (data: FormInputs) => {
+    setIsCalculating(true);
+    const totalMinutes = (data.days * 24 * 60) + (data.hours * 60) + data.minutes;
     const selectedProviders = Object.entries(data.providers)
       .filter(([_, selected]) => selected)
       .map(([provider]) => provider) as ('CityBee' | 'Bolt' | 'CarGuru')[];
 
     if (selectedProviders.length === 0) {
       alert('Please select at least one provider');
+      setIsCalculating(false);
       return;
     }
 
+    // Add a small delay to show the calculation animation
+    await new Promise(resolve => setTimeout(resolve, 600));
     const calculationResult = findBestPackage(totalMinutes, data.distance, selectedProviders);
     setResult(calculationResult);
+    setIsCalculating(false);
   };
 
   const watchAllFields = watch();
-  const isValid = watchAllFields.hours > 0 || watchAllFields.minutes > 0;
+  const isValid = watchAllFields.days > 0 || watchAllFields.hours > 0 || watchAllFields.minutes > 0;
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
@@ -77,12 +85,12 @@ const Calculator: React.FC = () => {
                           ? 'scale-105' 
                           : 'hover:bg-gray-50/50'
                       }`}>
-                        <div className="w-[60px] h-[30px] relative">
+                        <div className="w-[120px] h-[60px] relative">
                           <Image
                             src={provider.image}
                             alt={provider.id}
                             fill
-                            sizes="180px"
+                            sizes="120px"
                             className={`transition-opacity object-contain ${
                               value ? 'opacity-100' : 'opacity-50 group-hover:opacity-75'
                             }`}
@@ -109,12 +117,12 @@ const Calculator: React.FC = () => {
         </div>
 
         {/* Time Inputs */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Hours</label>
+            <label className="block text-sm font-medium text-gray-700">Days</label>
             <div className="mt-1 relative">
               <Controller
-                name="hours"
+                name="days"
                 control={control}
                 rules={{ min: 0 }}
                 render={({ field }) => (
@@ -127,6 +135,34 @@ const Calculator: React.FC = () => {
                         className="block w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0"
                         min="0"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <FaClock className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Hours</label>
+            <div className="mt-1 relative">
+              <Controller
+                name="hours"
+                control={control}
+                rules={{ min: 0, max: 23 }}
+                render={({ field }) => (
+                  <div className="flex items-center">
+                    <div className="relative flex-1">
+                      <input
+                        type="number"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        className="block w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0"
+                        min="0"
+                        max="23"
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                         <FaClock className="h-4 w-4 text-gray-400" />
@@ -198,16 +234,25 @@ const Calculator: React.FC = () => {
 
         <button
           type="submit"
-          disabled={!isValid}
+          disabled={!isValid || isCalculating}
           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-            ${isValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'}`}
+            relative overflow-hidden transition-all duration-300
+            ${isValid && !isCalculating ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'}
+          `}
         >
-          Calculate Best Price
+          <span className={`transition-opacity duration-300 ${isCalculating ? 'opacity-0' : 'opacity-100'}`}>
+            Calculate Best Price
+          </span>
+          {isCalculating && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            </div>
+          )}
         </button>
       </form>
 
       {result && (
-        <div className="mt-8 space-y-6">
+        <div className="mt-8 space-y-6 animate-fadeIn">
           {/* Best Overall Deal */}
           <div className={`p-4 rounded-lg border ${
             result.bestOverall.provider === 'CityBee' 

@@ -49,7 +49,7 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
   }, []);
 
   useEffect(() => {
-    const { cityBeeData, boltData } = generateChartData([], type);
+    const { cityBeeData, boltData, carGuruData } = generateChartData([], type);
 
     setChartData({
       datasets: [
@@ -65,6 +65,13 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
           data: boltData,
           backgroundColor: 'rgba(75, 192, 0, 0.6)',
           borderColor: 'rgb(75, 192, 0)',
+          borderWidth: 1,
+        },
+        {
+          label: 'CarGuru',
+          data: carGuruData,
+          backgroundColor: 'rgba(0, 99, 255, 0.6)',
+          borderColor: 'rgb(0, 99, 255)',
           borderWidth: 1,
         },
       ],

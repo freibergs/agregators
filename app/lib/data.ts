@@ -1,5 +1,5 @@
 export interface Package {
-  provider: 'CityBee' | 'Bolt';
+  provider: 'CityBee' | 'Bolt' | 'CarGuru';
   time: number; // minutes
   distance: number; // kilometers
   price: number;
@@ -155,8 +155,33 @@ export const boltPackages: Package[] = [
   { provider: 'Bolt', time: 10080, distance: 2000, price: 587, name: '7d+2000km' },
 ];
 
+// Predefined packages from CarGuru (simulated for comparison)
+export const carGuruPackages: Package[] = [
+  // Short trips
+  { provider: 'CarGuru', time: 60, distance: 10, price: 0.99 + (60 * 0.09) + (10 * 0.23), name: '1h+10km' },
+  { provider: 'CarGuru', time: 120, distance: 20, price: 0.99 + (120 * 0.09) + (20 * 0.23), name: '2h+20km' },
+  { provider: 'CarGuru', time: 180, distance: 30, price: 0.99 + (180 * 0.09) + (30 * 0.23), name: '3h+30km' },
+  
+  // Medium trips
+  { provider: 'CarGuru', time: 360, distance: 50, price: 0.99 + (360 * 0.09) + (50 * 0.23), name: '6h+50km' },
+  { provider: 'CarGuru', time: 720, distance: 100, price: 0.99 + (720 * 0.09) + (100 * 0.23), name: '12h+100km' },
+  
+  // Day trips (using day rate when cheaper)
+  { provider: 'CarGuru', time: 1440, distance: 100, price: 0.99 + 20.99 + (100 * 0.23), name: '1d+100km' },
+  { provider: 'CarGuru', time: 1440, distance: 200, price: 0.99 + 20.99 + (200 * 0.23), name: '1d+200km' },
+  { provider: 'CarGuru', time: 2880, distance: 300, price: 0.99 + (2 * 20.99) + (300 * 0.23), name: '2d+300km' },
+  { provider: 'CarGuru', time: 4320, distance: 500, price: 0.99 + (3 * 20.99) + (500 * 0.23), name: '3d+500km' },
+  
+  // Weekly trips
+  { provider: 'CarGuru', time: 10080, distance: 750, price: 0.99 + (7 * 20.99) + (750 * 0.23), name: '7d+750km' },
+  { provider: 'CarGuru', time: 10080, distance: 1000, price: 0.99 + (7 * 20.99) + (1000 * 0.23), name: '7d+1000km' },
+];
+
+// Note: These CarGuru packages are simulated for comparison purposes.
+// CarGuru does not currently offer any predefined packages.
+
 // All packages
-export const allPackages = [...cityBeePackages, ...boltPackages];
+export const allPackages = [...cityBeePackages, ...boltPackages, ...carGuruPackages];
 
 // Calculate the price using the standard rate
 export const calculateStandardPrice = (
@@ -280,19 +305,28 @@ export const calculateExtraCharges = (
   return extraCharge;
 };
 
+type BestResult = 
+  | {
+      type: 'standard';
+      provider: 'CityBee' | 'Bolt' | 'CarGuru';
+      price: number;
+      extraCharge: number;
+    }
+  | {
+      type: 'package';
+      provider: 'CityBee' | 'Bolt' | 'CarGuru';
+      package: Package;
+      price: number;
+      extraCharge: number;
+    };
+
 // Find the best package for a given trip
 export const findBestPackage = (
   timeInMinutes: number,
   distanceInKm: number,
   selectedProviders: ('CityBee' | 'Bolt' | 'CarGuru')[]
 ): { 
-  bestOverall: {
-    type: 'package' | 'standard';
-    provider: 'CityBee' | 'Bolt' | 'CarGuru';
-    package?: Package;
-    price: number;
-    extraCharge: number;
-  };
+  bestOverall: BestResult;
   bestByProvider: {
     [key in 'CityBee' | 'Bolt' | 'CarGuru']?: {
       bestPackage: Package | null;
@@ -322,8 +356,8 @@ export const findBestPackage = (
   // Initialize best results for each provider
   const bestByProvider: { [key: string]: any } = {};
   let bestOverallPrice = Infinity;
-  let bestOverall = {
-    type: 'standard' as const,
+  let bestOverall: BestResult = {
+    type: 'standard',
     provider: selectedProviders[0],
     price: Infinity,
     extraCharge: 0
@@ -450,8 +484,18 @@ export const generateChartData = (packages: Package[], property: 'time' | 'dista
     distance: pkg.distance
   }));
 
+  const carGuruData = carGuruPackages.map(pkg => ({
+    x: pkg[property],
+    y: pkg.price,
+    r: property === 'time' ? pkg.distance / 10 : pkg.time / 60,
+    name: pkg.name,
+    time: pkg.time,
+    distance: pkg.distance
+  }));
+
   return {
     cityBeeData,
-    boltData
+    boltData,
+    carGuruData
   };
 };

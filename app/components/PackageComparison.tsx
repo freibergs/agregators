@@ -1,10 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { cityBeePackages, boltPackages, formatTime, formatPrice } from '../lib/data';
+import { cityBeePackages, boltPackages, carGuruPackages, formatTime, formatPrice } from '../lib/data';
 
 export default function PackageComparison() {
-  const [filter, setFilter] = useState<string>('all');
+  const [selectedProviders, setSelectedProviders] = useState<{
+    CityBee: boolean;
+    Bolt: boolean;
+    CarGuru: boolean;
+  }>({
+    CityBee: true,
+    Bolt: true,
+    CarGuru: false
+  });
+
   const [sortBy, setSortBy] = useState<'time' | 'distance' | 'price'>('time');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -17,16 +26,31 @@ export default function PackageComparison() {
     }
   };
 
-  // Get packages based on filter
-  const getFilteredPackages = () => {
-    switch (filter) {
-      case 'citybee':
-        return [...cityBeePackages];
-      case 'bolt':
-        return [...boltPackages];
-      default:
-        return [...cityBeePackages, ...boltPackages];
+  const handleProviderChange = (provider: 'CityBee' | 'Bolt' | 'CarGuru', checked: boolean) => {
+    // Count how many would be selected after this change
+    const selectedCount = Object.entries(selectedProviders).reduce((count, [key, value]) => {
+      if (key === provider) {
+        return count + (checked ? 1 : 0);
+      }
+      return count + (value ? 1 : 0);
+    }, 0);
+
+    // Only allow the change if it wouldn't result in all providers being deselected
+    if (selectedCount > 0) {
+      setSelectedProviders(prev => ({
+        ...prev,
+        [provider]: checked
+      }));
     }
+  };
+
+  // Get packages based on selected providers
+  const getFilteredPackages = () => {
+    const packages = [];
+    if (selectedProviders.CityBee) packages.push(...cityBeePackages);
+    if (selectedProviders.Bolt) packages.push(...boltPackages);
+    if (selectedProviders.CarGuru) packages.push(...carGuruPackages);
+    return packages;
   };
 
   // Sort packages
@@ -56,37 +80,36 @@ export default function PackageComparison() {
         <div className="flex flex-col sm:flex-row justify-between items-center">
           <h2 className="text-2xl font-bold mb-4 sm:mb-0">Package Comparison</h2>
           
-          <div className="flex space-x-2">
-            <button 
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium ${
-                filter === 'all' 
-                  ? 'bg-gray-800 text-white' 
-                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-              }`}
-            >
-              All
-            </button>
-            <button 
-              onClick={() => setFilter('citybee')}
-              className={`px-4 py-2 rounded-lg font-medium ${
-                filter === 'citybee' 
-                  ? 'bg-orange-500 text-white' 
-                  : 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-              }`}
-            >
-              CityBee
-            </button>
-            <button 
-              onClick={() => setFilter('bolt')}
-              className={`px-4 py-2 rounded-lg font-medium ${
-                filter === 'bolt' 
-                  ? 'bg-green-500 text-white' 
-                  : 'bg-green-100 text-green-800 hover:bg-green-200'
-              }`}
-            >
-              Bolt
-            </button>
+          <div className="flex flex-wrap gap-4">
+            <label className="inline-flex items-center">
+              <input
+                type="checkbox"
+                className="form-checkbox h-5 w-5 text-orange-500 rounded border-gray-300"
+                checked={selectedProviders.CityBee}
+                onChange={(e) => handleProviderChange('CityBee', e.target.checked)}
+              />
+              <span className="ml-2 text-orange-700 font-medium">CityBee</span>
+            </label>
+            
+            <label className="inline-flex items-center">
+              <input
+                type="checkbox"
+                className="form-checkbox h-5 w-5 text-green-500 rounded border-gray-300"
+                checked={selectedProviders.Bolt}
+                onChange={(e) => handleProviderChange('Bolt', e.target.checked)}
+              />
+              <span className="ml-2 text-green-700 font-medium">Bolt</span>
+            </label>
+            
+            <label className="inline-flex items-center">
+              <input
+                type="checkbox"
+                className="form-checkbox h-5 w-5 text-blue-500 rounded border-gray-300"
+                checked={selectedProviders.CarGuru}
+                onChange={(e) => handleProviderChange('CarGuru', e.target.checked)}
+              />
+              <span className="ml-2 text-blue-700 font-medium">CarGuru</span>
+            </label>
           </div>
         </div>
       </div>
@@ -160,8 +183,12 @@ export default function PackageComparison() {
                 key={`${pkg.provider}-${pkg.name}-${index}`}
                 className={`
                   hover:bg-gray-50
-                  ${pkg.provider === 'CityBee' ? 'border-l-4 border-orange-500' : 'border-l-4 border-green-500'}
-                `}
+                  ${pkg.provider === 'CityBee' 
+                    ? 'border-l-4 border-orange-500' 
+                    : pkg.provider === 'Bolt'
+                      ? 'border-l-4 border-green-500'
+                      : 'border-l-4 border-blue-500'
+                  }`}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -169,10 +196,12 @@ export default function PackageComparison() {
                       className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
                         pkg.provider === 'CityBee' 
                           ? 'bg-orange-100 text-orange-600' 
-                          : 'bg-green-100 text-green-600'
+                          : pkg.provider === 'Bolt'
+                            ? 'bg-green-100 text-green-600'
+                            : 'bg-blue-100 text-blue-600'
                       }`}
                     >
-                      {pkg.provider === 'CityBee' ? 'CB' : 'B'}
+                      {pkg.provider === 'CityBee' ? 'CB' : pkg.provider === 'Bolt' ? 'B' : 'CG'}
                     </div>
                     <div className="text-sm font-medium text-gray-900">
                       {pkg.provider}
@@ -196,6 +225,12 @@ export default function PackageComparison() {
           </tbody>
         </table>
       </div>
+
+      {selectedProviders.CarGuru && (
+        <div className="p-4 bg-blue-50 text-blue-700 text-sm">
+          Note: CarGuru packages shown here are simulated for comparison purposes. CarGuru does not currently offer any predefined packages.
+        </div>
+      )}
     </div>
   );
 } 
