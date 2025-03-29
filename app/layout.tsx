@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CityBee vs Bolt - Car Sharing Calculator",
+  title: "Car Sharing Calculator LV",
   description: "Find the cheapest car sharing option between CityBee and Bolt for your trip. Compare packages and get the best deal.",
 };
 

@@ -7,7 +7,7 @@ export interface Package {
 }
 
 export interface StandardRate {
-  provider: 'CityBee' | 'Bolt';
+  provider: 'CityBee' | 'Bolt' | 'CarGuru';
   fixedFee: number;
   minuteRate: number;
   hourRate: number;
@@ -35,6 +35,15 @@ export const standardRates: StandardRate[] = [
     dayRate: 16.90,
     kmRate: 0.26,
     minPrice: 2.35
+  },
+  {
+    provider: 'CarGuru',
+    fixedFee: 0.99,
+    minuteRate: 0.09,
+    hourRate: 5.40, // Calculated from minute rate
+    dayRate: 20.99,
+    kmRate: 0.23,
+    minPrice: 2.00
   }
 ];
 
@@ -151,32 +160,53 @@ export const allPackages = [...cityBeePackages, ...boltPackages];
 
 // Calculate the price using the standard rate
 export const calculateStandardPrice = (
-  provider: 'CityBee' | 'Bolt',
+  provider: 'CityBee' | 'Bolt' | 'CarGuru',
   timeInMinutes: number,
   distanceInKm: number
 ): number => {
   const rate = standardRates.find(r => r.provider === provider);
   if (!rate) return 0;
 
-  let timePrice = 0;
-  const days = Math.floor(timeInMinutes / 1440);
-  const remainingMinutes = timeInMinutes % 1440;
-  const hours = Math.floor(remainingMinutes / 60);
-  const minutes = remainingMinutes % 60;
+  // Calculate using minutes
+  const totalByMinutes = timeInMinutes * rate.minuteRate;
 
-  if (days > 0) {
-    timePrice += days * rate.dayRate;
-  }
+  // Calculate using hours
+  const totalHours = Math.floor(timeInMinutes / 60);
+  const leftoverMinutes = timeInMinutes % 60;
+  const totalByHours = (totalHours * rate.hourRate) + (leftoverMinutes * rate.minuteRate);
 
-  if (hours > 0) {
-    // Check if hourly rate is cheaper than minute rate
-    const hourPrice = hours * rate.hourRate;
-    const minutesPrice = hours * 60 * rate.minuteRate;
-    timePrice += Math.min(hourPrice, minutesPrice);
-  }
-
-  timePrice += minutes * rate.minuteRate;
+  // Calculate using days - check both current and next day
+  const currentDays = Math.floor(timeInMinutes / 1440);
+  const nextDays = currentDays + 1;
   
+  // Current day calculation
+  const remainingMinutes = timeInMinutes % 1440;
+  const remainingHours = Math.floor(remainingMinutes / 60);
+  const finalMinutes = remainingMinutes % 60;
+
+  let currentDayPrice = currentDays * rate.dayRate;
+  let remainingTimePrice = 0;
+  
+  if (remainingHours > 0) {
+    const byHourPrice = remainingHours * rate.hourRate;
+    const byMinutePrice = remainingHours * 60 * rate.minuteRate;
+    remainingTimePrice += Math.min(byHourPrice, byMinutePrice);
+  }
+  remainingTimePrice += finalMinutes * rate.minuteRate;
+  
+  const currentDayTotal = currentDayPrice + remainingTimePrice;
+
+  // Next day calculation (just use the full day rate)
+  const nextDayTotal = nextDays * rate.dayRate;
+
+  // Use the minimum of all calculation methods
+  const timePrice = Math.min(
+    totalByMinutes,
+    totalByHours,
+    currentDayTotal,
+    nextDayTotal
+  );
+
   const distancePrice = distanceInKm * rate.kmRate;
   const totalPrice = rate.fixedFee + timePrice + distancePrice;
   
@@ -185,7 +215,7 @@ export const calculateStandardPrice = (
 
 // Calculate extra charges for package overages
 export const calculateExtraCharges = (
-  provider: 'CityBee' | 'Bolt',
+  provider: 'CityBee' | 'Bolt' | 'CarGuru',
   packageTime: number,
   packageDistance: number,
   actualTime: number,
@@ -237,15 +267,20 @@ export const findBestPackage = (
   bestPackage: Package | null, 
   totalPrice: number, 
   extraCharge: number, 
-  standardPrice: { citybee: number, bolt: number } 
+  standardPrice: { citybee: number, bolt: number, carguru: number } 
 } => {
   // Calculate standard prices
   const cityBeeStandardPrice = calculateStandardPrice('CityBee', timeInMinutes, distanceInKm);
   const boltStandardPrice = calculateStandardPrice('Bolt', timeInMinutes, distanceInKm);
-  const standardPrices = { citybee: cityBeeStandardPrice, bolt: boltStandardPrice };
+  const carguruStandardPrice = calculateStandardPrice('CarGuru', timeInMinutes, distanceInKm);
+  const standardPrices = { 
+    citybee: cityBeeStandardPrice, 
+    bolt: boltStandardPrice,
+    carguru: carguruStandardPrice 
+  };
 
   // Start with standard pricing as the benchmark
-  let bestPrice = Math.min(cityBeeStandardPrice, boltStandardPrice);
+  let bestPrice = Math.min(cityBeeStandardPrice, boltStandardPrice, carguruStandardPrice);
   let bestPackage: Package | null = null;
   let bestExtraCharge = 0;
 

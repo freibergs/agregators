@@ -8,7 +8,7 @@ export default function Home() {
       <div className="bg-gradient-to-r from-orange-600 to-green-600 py-12">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-white text-center">
-            CityBee vs Bolt Car Sharing Calculator
+            Car Sharing Calculator LV
           </h1>
           <p className="text-xl text-white text-center mt-4 max-w-3xl mx-auto">
             Find the most cost-effective car sharing option for your trip
@@ -23,7 +23,7 @@ export default function Home() {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-lg p-4">
-            <h2 className="text-2xl font-bold mb-4">Price vs Time Comparison</h2>
+            <h2 className="text-2xl font-bold mb-4">Price vs Time Comparison for packages</h2>
             <p className="text-gray-600 mb-4">
               Bubble size represents distance in kilometers. Hover over points to see package details.
             </p>
@@ -31,7 +31,7 @@ export default function Home() {
           </div>
           
           <div className="bg-white rounded-lg shadow-lg p-4">
-            <h2 className="text-2xl font-bold mb-4">Price vs Distance Comparison</h2>
+            <h2 className="text-2xl font-bold mb-4">Price vs Distance for packages</h2>
             <p className="text-gray-600 mb-4">
               Bubble size represents time in hours. Hover over points to see package details.
             </p>
@@ -45,7 +45,7 @@ export default function Home() {
         
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4">About This Calculator</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <h3 className="text-xl font-bold text-orange-600 mb-2">CityBee</h3>
               <p className="text-gray-700 mb-4">
@@ -73,6 +73,21 @@ export default function Home() {
                 <li>Per day: €16.90</li>
                 <li>Per kilometer: €0.26</li>
                 <li>Minimum trip price: €2.35</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-bold text-blue-600 mb-2">CarGuru</h3>
+              <p className="text-gray-700 mb-4">
+                CarGuru (blue cars) standard rates:
+              </p>
+              <ul className="list-disc ml-6 text-gray-700 space-y-2">
+                <li>Fixed fee: €0.99</li>
+                <li>Per minute: €0.09</li>
+                <li>Per hour: €5.40</li>
+                <li>Per day: €20.99</li>
+                <li>Per kilometer: €0.23</li>
+                <li>Minimum trip price: €2.00</li>
               </ul>
             </div>
           </div>
