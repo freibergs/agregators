@@ -209,7 +209,7 @@ export const calculateStandardPrice = (
   const remainingHours = Math.floor(remainingMinutes / 60);
   const finalMinutes = remainingMinutes % 60;
 
-  let currentDayPrice = currentDays * rate.dayRate;
+  const currentDayPrice = currentDays * rate.dayRate;
   let remainingTimePrice = 0;
   
   if (remainingHours > 0) {

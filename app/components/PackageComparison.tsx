@@ -108,7 +108,7 @@ export default function PackageComparison() {
                 checked={selectedProviders.CarGuru}
                 onChange={(e) => handleProviderChange('CarGuru', e.target.checked)}
               />
-              <span className="ml-2 text-blue-700 font-medium">CarGuru</span>
+              <span className="ml-2 text-blue-700 font-medium">CarGuru*</span>
             </label>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function PackageComparison() {
 
       {selectedProviders.CarGuru && (
         <div className="p-4 bg-blue-50 text-blue-700 text-sm">
-          Note: CarGuru packages shown here are simulated for comparison purposes. CarGuru does not currently offer any predefined packages.
+          * CarGuru packages shown here are simulated for comparison purposes. CarGuru does not currently offer any predefined packages.
         </div>
       )}
     </div>

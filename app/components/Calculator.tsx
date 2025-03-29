@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { findBestPackage, formatPrice, formatTime, standardRates, StandardRate } from '../lib/data';
+import { findBestPackage, formatPrice, formatTime, standardRates } from '../lib/data';
 import { FaClock, FaRoad } from 'react-icons/fa';
 import Image from 'next/image';
 
@@ -17,7 +17,7 @@ interface FormInputs {
 }
 
 const Calculator: React.FC = () => {
-  const { control, handleSubmit, watch, formState: { errors } } = useForm<FormInputs>({
+  const { control, handleSubmit, watch } = useForm<FormInputs>({
     defaultValues: {
       days: 0,
       hours: 0,
@@ -38,7 +38,7 @@ const Calculator: React.FC = () => {
     setIsCalculating(true);
     const totalMinutes = (data.days * 24 * 60) + (data.hours * 60) + data.minutes;
     const selectedProviders = Object.entries(data.providers)
-      .filter(([_, selected]) => selected)
+      .filter(([, selected]) => selected)
       .map(([provider]) => provider) as ('CityBee' | 'Bolt' | 'CarGuru')[];
 
     if (selectedProviders.length === 0) {
@@ -55,7 +55,9 @@ const Calculator: React.FC = () => {
   };
 
   const watchAllFields = watch();
-  const isValid = watchAllFields.days > 0 || watchAllFields.hours > 0 || watchAllFields.minutes > 0;
+  const isValid =
+  (watchAllFields.days > 0 || watchAllFields.hours > 0 || watchAllFields.minutes > 0) &&
+  Object.values(watchAllFields.providers || {}).some((v) => v === true);
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">

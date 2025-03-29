@@ -69,7 +69,7 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
           borderWidth: 1
         },
         {
-          label: 'CarGuru',
+          label: 'CarGuru (Pseudo-packages)',
           data: carGuruData,
           backgroundColor: 'rgba(0, 99, 255, 0.6)',
           borderColor: 'rgb(0, 99, 255)',
@@ -130,14 +130,42 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
         max: maxX,
         title: {
           display: true,
-          text: type === 'time' ? 'Time (minutes)' : 'Distance (km)',
+          text: type === 'time' ? 'Time' : 'Distance (km)',
         },
         ticks: {
           callback: function (value: number) {
+            if (type === 'time') {
+              if (value < 60) {
+                return `${Math.round(value)}m`;
+              } else if (value < 1440) {
+                let hours = Math.floor(value / 60);
+                let minutes = Math.round((value % 60) / 5) * 5;
+        
+                if (minutes === 60) {
+                  hours += 1;
+                  minutes = 0;
+                }
+        
+                return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+              } else {
+                let days = Math.floor(value / 1440);
+                let hours = Math.round((value % 1440) / 60);
+        
+                if (hours === 24) {
+                  days += 1;
+                  hours = 0;
+                }
+        
+                return hours === 0 ? `${days}d` : `${days}d ${hours}h`;
+              }
+            }
             return Math.round(value);
           },
           stepSize: 1,
         },
+        
+        
+        
       },
       y: {
         beginAtZero: true,
