@@ -28,7 +28,7 @@ export default function Home() {
     <main className="min-h-screen bg-gray-100 relative">
       <div
         className="py-12 bg-cover bg-center"
-        style={{ backgroundImage: `url(${basePath}/background.webp)` }}
+        style={{ backgroundImage: "url('/background.webp')" }}
       >
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-white text-center">

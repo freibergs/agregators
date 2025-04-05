@@ -57,9 +57,9 @@ const Calculator: React.FC = () => {
   };
 
   const providersData = [
-    { id: 'CityBee', image: `${basePath}/citybee.png`, fullWidth: 400, fullHeight: 200 },
-    { id: 'Bolt', image: `${basePath}/bolt.png`, fullWidth: 400, fullHeight: 200 },
-    { id: 'CarGuru', image: `${basePath}/carguru.png`, fullWidth: 400, fullHeight: 200 }
+    { id: 'CityBee', image: '/citybee.png', fullWidth: 400, fullHeight: 200 },
+    { id: 'Bolt', image: '/bolt.png', fullWidth: 400, fullHeight: 200 },
+    { id: 'CarGuru', image: '/carguru.png', fullWidth: 400, fullHeight: 200 }
   ];
 
   const watchAllFields = watch();
@@ -102,6 +102,7 @@ const Calculator: React.FC = () => {
                             }`}
                             quality={100}
                             priority
+                            unoptimized={true}
                           />
                         </div>
                         <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 ${
