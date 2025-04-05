@@ -5,29 +5,26 @@ import {
   Chart as ChartJS,
   LinearScale,
   PointElement,
-  LineElement,
   Tooltip,
   Legend,
   ScatterController,
   TimeScale,
   CategoryScale,
   Title,
-  Tick
+  Tick,
 } from 'chart.js';
 import { Scatter } from 'react-chartjs-2';
-import { generateChartData, generateStandardPriceData } from '../lib/data';
-import { formatTime } from '../lib/data';
+import { generateChartData, formatTime } from '../lib/data';
 
 ChartJS.register(
   LinearScale,
   PointElement,
-  LineElement,
   Tooltip,
   Legend,
   ScatterController,
   TimeScale,
   CategoryScale,
-  Title
+  Title,
 );
 
 interface PriceComparisonChartProps {
@@ -53,7 +50,6 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
 
   useEffect(() => {
     const { cityBeeData, boltData, carGuruData } = generateChartData([], type);
-    const { cityBeeStandardLine, boltStandardLine, carGuruStandardLine } = generateStandardPriceData(type);
 
     setChartData({
       datasets: [
@@ -78,46 +74,6 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
           borderColor: 'rgb(0, 99, 255)',
           borderWidth: 1
         },
-        // Standard price lines
-        {
-          label: 'CityBee Standard',
-          data: cityBeeStandardLine,
-          borderColor: 'rgb(255, 99, 0)',
-          borderWidth: 2,
-          borderDash: [5, 5],
-          fill: false,
-          pointRadius: 0,
-          type: 'line',
-          showLine: true,
-          hidden: false,
-          legend: { display: false }
-        },
-        {
-          label: 'Bolt Standard',
-          data: boltStandardLine,
-          borderColor: 'rgb(75, 192, 0)',
-          borderWidth: 2,
-          borderDash: [5, 5],
-          fill: false,
-          pointRadius: 0,
-          type: 'line',
-          showLine: true,
-          hidden: false,
-          legend: { display: false }
-        },
-        {
-          label: 'CarGuru Standard',
-          data: carGuruStandardLine,
-          borderColor: 'rgb(0, 99, 255)',
-          borderWidth: 2,
-          borderDash: [5, 5],
-          fill: false,
-          pointRadius: 0,
-          type: 'line',
-          showLine: true,
-          hidden: false,
-          legend: { display: false }
-        }
       ],
     });
   }, [type]);
