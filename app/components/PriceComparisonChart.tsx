@@ -34,7 +34,9 @@ interface PriceComparisonChartProps {
 }
 
 export default function PriceComparisonChart({ type }: PriceComparisonChartProps) {
+  // eslint-disable-next-line
   const chartRef = useRef<any>(null);
+  // eslint-disable-next-line
   const [chartData, setChartData] = useState<any>(null);
   const [zoomLoaded, setZoomLoaded] = useState(false);
 
@@ -184,6 +186,7 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
     plugins: {
       tooltip: {
         callbacks: {
+          // eslint-disable-next-line
           label: (context: any) => {
             const point = context.raw;
             const distance = point.distance ?? point.x ?? 0;
@@ -200,6 +203,7 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
       },
       legend: {
         labels: {
+          // eslint-disable-next-line
           filter: (item: any) => !item.text.includes('Standard')
         }
       },

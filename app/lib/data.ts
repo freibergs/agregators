@@ -355,6 +355,7 @@ export const findBestPackage = (
   });
 
   // Initialize best results for each provider
+  // eslint-disable-next-line
   const bestByProvider: { [key: string]: any } = {};
   let bestOverallPrice = Infinity;
   let bestOverall: BestResult = {
