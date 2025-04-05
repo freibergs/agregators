@@ -247,13 +247,8 @@ export const calculateExtraCharges = (
   actualTime: number,
   actualDistance: number
 ): number => {
-  console.log('\n=== calculateExtraCharges ===');
-  console.log(`Provider: ${provider}`);
-  console.log(`Package: ${packageTime}min, ${packageDistance}km`);
-  console.log(`Actual: ${actualTime}min, ${actualDistance}km`);
 
   if (actualTime <= packageTime && actualDistance <= packageDistance) {
-    console.log('No extra charges needed');
     return 0;
   }
 
@@ -265,17 +260,14 @@ export const calculateExtraCharges = (
   // Calculate extra time charges
   if (actualTime > packageTime) {
     const extraMinutes = actualTime - packageTime;
-    console.log(`\nExtra time: ${extraMinutes} minutes`);
     
     // Calculate using minutes
     const byMinutePrice = extraMinutes * rate.minuteRate;
-    console.log(`By minute rate (${rate.minuteRate}): ${byMinutePrice.toFixed(2)}`);
 
     // Calculate using hours
     const totalHours = Math.floor(extraMinutes / 60);
     const leftoverMinutes = extraMinutes % 60;
     const byHourPrice = (totalHours * rate.hourRate) + (leftoverMinutes * rate.minuteRate);
-    console.log(`By hour rate (${rate.hourRate}): ${byHourPrice.toFixed(2)} (${totalHours}h + ${leftoverMinutes}min)`);
 
     // Calculate using days
     const days = Math.floor(extraMinutes / 1440);
@@ -286,10 +278,8 @@ export const calculateExtraCharges = (
       (days * rate.dayRate) +
       (remainingHours * Math.min(rate.hourRate, remainingHours * 60 * rate.minuteRate)) +
       (finalMinutes * rate.minuteRate);
-    console.log(`By day rate (${rate.dayRate}): ${byDayPrice.toFixed(2)} (${days}d + ${remainingHours}h + ${finalMinutes}min)`);
 
     const timeCharge = Math.min(byMinutePrice, byHourPrice, byDayPrice);
-    console.log(`Best time charge: ${timeCharge.toFixed(2)}`);
     extraCharge += timeCharge;
   }
 
@@ -297,12 +287,9 @@ export const calculateExtraCharges = (
   if (actualDistance > packageDistance) {
     const extraDistance = actualDistance - packageDistance;
     const distanceCharge = extraDistance * rate.kmRate;
-    console.log(`\nExtra distance: ${extraDistance}km at rate ${rate.kmRate}`);
-    console.log(`Distance charge: ${distanceCharge.toFixed(2)}`);
     extraCharge += distanceCharge;
   }
 
-  console.log(`\nTotal extra charge: ${extraCharge.toFixed(2)}`);
   return extraCharge;
 };
 
@@ -337,9 +324,6 @@ export const findBestPackage = (
     };
   };
 } => {
-  console.log('\n=== findBestPackage ===');
-  console.log(`Searching for: ${timeInMinutes}min, ${distanceInKm}km`);
-  console.log(`Selected providers: ${selectedProviders.join(', ')}`);
 
   // Calculate standard prices for selected providers
   const standardPrices = Object.fromEntries(
@@ -349,10 +333,6 @@ export const findBestPackage = (
     ])
   ) as { [key in 'CityBee' | 'Bolt' | 'CarGuru']?: number };
 
-  console.log('\nStandard prices:');
-  Object.entries(standardPrices).forEach(([provider, price]) => {
-    console.log(`${provider}: ${price.toFixed(2)}`);
-  });
 
   // Initialize best results for each provider
   // eslint-disable-next-line
@@ -390,7 +370,6 @@ export const findBestPackage = (
     
     // Check each package for this provider
     providerPackages.forEach(pkg => {
-      console.log(`\nChecking ${provider} package: ${pkg.name} (${pkg.price.toFixed(2)}€)`);
       
       const extraCharge = calculateExtraCharges(
         provider,
@@ -401,7 +380,6 @@ export const findBestPackage = (
       );
       
       const totalPackagePrice = pkg.price + extraCharge;
-      console.log(`Total package price: ${pkg.price.toFixed(2)} + ${extraCharge.toFixed(2)} = ${totalPackagePrice.toFixed(2)}`);
 
       // Update best package for this provider
       if (totalPackagePrice < bestProviderPrice) {
@@ -431,10 +409,6 @@ export const findBestPackage = (
       extraCharge: bestProviderExtraCharge
     };
   });
-
-  console.log('\n=== Final Result ===');
-  console.log(`Best overall: ${bestOverall.type === 'package' ? bestOverall.package?.name : 'Standard'} from ${bestOverall.provider}`);
-  console.log(`Best overall price: ${bestOverall.price.toFixed(2)}`);
   
   return {
     bestOverall,

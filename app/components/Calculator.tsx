@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { useRouter } from 'next/navigation';
 import { findBestPackage, formatPrice, formatTime, standardRates } from '../lib/data';
 import { FaClock, FaRoad } from 'react-icons/fa';
 import Image from 'next/image';
@@ -31,6 +32,9 @@ const Calculator: React.FC = () => {
     }
   });
 
+  const router = useRouter();
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
   const [result, setResult] = React.useState<ReturnType<typeof findBestPackage> | null>(null);
   const [isCalculating, setIsCalculating] = React.useState(false);
 
@@ -54,6 +58,12 @@ const Calculator: React.FC = () => {
     setIsCalculating(false);
   };
 
+  const providersData = [
+    { id: 'CityBee', image: `${basePath}/citybee.png`, fullWidth: 400, fullHeight: 200 },
+    { id: 'Bolt', image: `${basePath}/bolt.png`, fullWidth: 400, fullHeight: 200 },
+    { id: 'CarGuru', image: `${basePath}/carguru.png`, fullWidth: 400, fullHeight: 200 }
+  ];
+
   const watchAllFields = watch();
   const isValid =
   (watchAllFields.days > 0 || watchAllFields.hours > 0 || watchAllFields.minutes > 0) &&
@@ -65,11 +75,7 @@ const Calculator: React.FC = () => {
         {/* Provider Selection */}
         <div className="space-y-2">
           <div className="flex gap-6 justify-center">
-            {[
-              { id: 'CityBee', image: '/citybee.png', fullWidth: 400, fullHeight: 200 },
-              { id: 'Bolt', image: '/bolt.png', fullWidth: 400, fullHeight: 200 },
-              { id: 'CarGuru', image: '/carguru.png', fullWidth: 400, fullHeight: 200 }
-            ].map((provider) => (
+            {providersData.map((provider) => (
               <div key={provider.id} className="flex items-center">
                 <Controller
                   name={`providers.${provider.id}` as const}
