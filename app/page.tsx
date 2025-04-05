@@ -9,7 +9,6 @@ import { ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function Home() {
   // const router = useRouter(); // Removed unused variable
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
   const [showScrollButtons, setShowScrollButtons] = useState(false);
 
   useEffect(() => {

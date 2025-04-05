@@ -31,8 +31,6 @@ const Calculator: React.FC = () => {
     }
   });
 
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-
   const [result, setResult] = React.useState<ReturnType<typeof findBestPackage> | null>(null);
   const [isCalculating, setIsCalculating] = React.useState(false);
 
