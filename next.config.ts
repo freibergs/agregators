@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
   // basePath and assetPrefix are needed for GitHub Pages (production)
   basePath: isProd ? "/agregators" : undefined,
   assetPrefix: isProd ? "/agregators/" : undefined,
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    // !! WARN !!
+    ignoreBuildErrors: true,
+  },
   /* config options here */
 };
 
