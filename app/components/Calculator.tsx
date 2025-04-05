@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { useRouter } from 'next/navigation';
 import { findBestPackage, formatPrice, formatTime, standardRates } from '../lib/data';
 import { FaClock, FaRoad } from 'react-icons/fa';
 import Image from 'next/image';
@@ -32,7 +31,6 @@ const Calculator: React.FC = () => {
     }
   });
 
-  const router = useRouter();
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
   const [result, setResult] = React.useState<ReturnType<typeof findBestPackage> | null>(null);

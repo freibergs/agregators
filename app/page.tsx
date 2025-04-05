@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation'; // Removed unused import
 import Calculator from './components/Calculator';
 import PriceComparisonChart from './components/PriceComparisonChart';
 import PackageComparison from './components/PackageComparison';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function Home() {
-  const router = useRouter();
+  // const router = useRouter(); // Removed unused variable
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
   const [showScrollButtons, setShowScrollButtons] = useState(false);
 
