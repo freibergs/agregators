@@ -12,6 +12,7 @@ import {
   TimeScale,
   CategoryScale,
   Title,
+  Tick
 } from 'chart.js';
 import { Scatter } from 'react-chartjs-2';
 import { generateChartData, generateStandardPriceData } from '../lib/data';
@@ -135,7 +136,9 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
           text: type === 'time' ? 'Time' : 'Distance (km)',
         },
         ticks: {
-          callback: function (value: number) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          callback: function (tickValue: string | number, index: number, ticks: Tick[]) {
+            const value = Number(tickValue);
             if (type === 'time') {
               if (value < 60) {
                 return `${Math.round(value)}m`;
@@ -176,7 +179,9 @@ export default function PriceComparisonChart({ type }: PriceComparisonChartProps
           text: 'Price (€)',
         },
         ticks: {
-          callback: function (value: number) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          callback: function (tickValue: string | number, index: number, ticks: Tick[]) {
+            const value = Number(tickValue);
             return Math.round(value);
           },
           stepSize: 1,
