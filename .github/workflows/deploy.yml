@@ -1,9 +1,0 @@
-  - name: Install Dependencies
-    run: npm ci # or 'yarn install --frozen-lockfile', 'pnpm install --frozen-lockfile'
-  - name: Build with Next.js for GitHub Pages
-    env:
-      IS_GITHUB_PAGES_BUILD: true
-    run: npm run build # Build uses the main next.config.ts, IS_GITHUB_PAGES_BUILD enables export
-  - name: Setup Pages
-    uses: actions/configure-pages@v4
-  - name: Upload artifact 
