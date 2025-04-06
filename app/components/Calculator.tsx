@@ -31,6 +31,8 @@ const Calculator: React.FC = () => {
     }
   });
 
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
   const [result, setResult] = React.useState<ReturnType<typeof findBestPackage> | null>(null);
   const [isCalculating, setIsCalculating] = React.useState(false);
 
@@ -55,9 +57,9 @@ const Calculator: React.FC = () => {
   };
 
   const providersData = [
-    { id: 'CityBee', image: '/citybee.png', fullWidth: 400, fullHeight: 200 },
-    { id: 'Bolt', image: '/bolt.png', fullWidth: 400, fullHeight: 200 },
-    { id: 'CarGuru', image: '/carguru.png', fullWidth: 400, fullHeight: 200 }
+    { id: 'CityBee', image: `${basePath}/citybee.png`, fullWidth: 400, fullHeight: 200 },
+    { id: 'Bolt', image: `${basePath}/bolt.png`, fullWidth: 400, fullHeight: 200 },
+    { id: 'CarGuru', image: `${basePath}/carguru.png`, fullWidth: 400, fullHeight: 200 }
   ];
 
   const watchAllFields = watch();

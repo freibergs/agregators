@@ -37,6 +37,7 @@ jobs:
       - name: Build with Next.js for GitHub Pages
         env:
           IS_GITHUB_PAGES_BUILD: true
+          NEXT_PUBLIC_BASE_PATH: /agregators # Added environment variable
         run: npm run build # Build uses the main next.config.ts, IS_GITHUB_PAGES_BUILD enables export
       - name: Setup Pages
         uses: actions/configure-pages@v4

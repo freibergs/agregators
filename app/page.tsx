@@ -8,6 +8,7 @@ import PackageComparison from './components/PackageComparison';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function Home() {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
   // const router = useRouter(); // Removed unused variable
   const [showScrollButtons, setShowScrollButtons] = useState(false);
 
@@ -27,7 +28,7 @@ export default function Home() {
     <main className="min-h-screen bg-gray-100 relative">
       <div
         className="py-12 bg-cover bg-center"
-        style={{ backgroundImage: "url('/background.webp')" }}
+        style={{ backgroundImage: `url(${basePath}/background.webp)` }}
       >
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-white text-center">
