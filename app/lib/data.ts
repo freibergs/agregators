@@ -13,28 +13,28 @@ export interface StandardRate {
   hourRate: number;
   dayRate: number;
   kmRate: number;
-  minPrice: number;
+  minPrice: number | null;
 }
 
 // Standard rates
 export const standardRates: StandardRate[] = [
   {
     provider: 'CityBee',
-    fixedFee: 1.99,
-    minuteRate: 0.13,
-    hourRate: 5.90,
-    dayRate: 20.90,
-    kmRate: 0.31,
+    fixedFee: 0.44,
+    minuteRate: 0.12,
+    hourRate: 5.49,
+    dayRate: 19.99,
+    kmRate: 0.29,
     minPrice: 1.99
   },
   {
     provider: 'Bolt',
     fixedFee: 0,
-    minuteRate: 0.12,
-    hourRate: 4.90,
-    dayRate: 19.90,
-    kmRate: 0.29,
-    minPrice: 2.55
+    minuteRate: 0.11,
+    hourRate: 4.40,
+    dayRate: 16.90,
+    kmRate: 0.26,
+    minPrice: 2.35
   },
   {
     provider: 'CarGuru',
@@ -46,6 +46,14 @@ export const standardRates: StandardRate[] = [
     minPrice: 2.00
   }
 ];
+
+const applyMinimumPrice = (price: number, rate: StandardRate): number => {
+  if (rate.minPrice === null) {
+    return price;
+  }
+
+  return Math.max(price, rate.minPrice);
+};
 
 // Predefined packages from CityBee
 export const cityBeePackages: Package[] = [
@@ -281,8 +289,7 @@ export const calculateStandardPrice = (
   const distancePrice = distanceInKm * rate.kmRate;
   const calculatedPrice = rate.fixedFee + timePrice + distancePrice;
   
-  // Only use the calculated price if it's higher than minPrice
-  return calculatedPrice > rate.minPrice ? calculatedPrice : rate.minPrice;
+  return applyMinimumPrice(calculatedPrice, rate);
 };
 
 // Calculate extra charges for package overages
@@ -630,11 +637,11 @@ export const generateStandardPriceData = (property: 'time' | 'distance') => {
           basePrice = Math.min(byMinutes, byHours, byDays);
         }
 
-        // Add fixed fee and compare with minPrice
+        // Add fixed fee and compare with the provider minimum, if any
         const calculatedPrice = basePrice + rate.fixedFee;
         points.push({
           x,
-          y: calculatedPrice > rate.minPrice ? calculatedPrice : rate.minPrice
+          y: applyMinimumPrice(calculatedPrice, rate)
         });
       }
     } else {
@@ -660,7 +667,7 @@ export const generateStandardPriceData = (property: 'time' | 'distance') => {
         const calculatedPrice = basePrice + rate.fixedFee;
         points.push({
           x,
-          y: calculatedPrice > rate.minPrice ? calculatedPrice : rate.minPrice
+          y: applyMinimumPrice(calculatedPrice, rate)
         });
       }
     }

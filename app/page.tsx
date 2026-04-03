@@ -5,7 +5,44 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Calculator from './components/Calculator';
 import PriceComparisonChart from './components/PriceComparisonChart';
 import PackageComparison from './components/PackageComparison';
+import { standardRates, type StandardRate } from './lib/data';
 import { ArrowUp, ArrowDown, Car, Zap, Shield, TrendingDown } from 'lucide-react';
+
+const RATE_CARD_STYLES: Record<StandardRate['provider'], { card: string; heading: string }> = {
+  CityBee: {
+    card: 'border-orange-500/20 bg-orange-500/5',
+    heading: 'text-orange-400',
+  },
+  Bolt: {
+    card: 'border-green-500/20 bg-green-500/5',
+    heading: 'text-green-400',
+  },
+  CarGuru: {
+    card: 'border-blue-500/20 bg-blue-500/5',
+    heading: 'text-blue-400',
+  },
+};
+
+const formatRateValue = (value: number | null, options?: { zeroAsNone?: boolean }) => {
+  if (value === null) {
+    return 'None';
+  }
+
+  if (options?.zeroAsNone && value === 0) {
+    return 'None';
+  }
+
+  return `€${value.toFixed(2)}`;
+};
+
+const getRateRows = (rate: StandardRate) => [
+  { label: 'Fixed fee', value: formatRateValue(rate.fixedFee, { zeroAsNone: true }) },
+  { label: 'Per minute', value: formatRateValue(rate.minuteRate) },
+  { label: 'Per hour', value: formatRateValue(rate.hourRate) },
+  { label: 'Per day', value: formatRateValue(rate.dayRate) },
+  { label: 'Per km', value: formatRateValue(rate.kmRate) },
+  { label: 'Min price', value: formatRateValue(rate.minPrice) },
+];
 
 export default function Home() {
   const [showScrollButtons, setShowScrollButtons] = useState(false);
@@ -141,57 +178,25 @@ export default function Home() {
         >
           <h2 className="text-2xl font-bold text-white mb-6">Standard Rates</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { name: 'CityBee', color: 'orange', rates: [
-                { label: 'Fixed fee', value: '€1.49' },
-                { label: 'Per minute', value: '€0.12' },
-                { label: 'Per hour', value: '€5.49' },
-                { label: 'Per day', value: '€19.99' },
-                { label: 'Per km', value: '€0.29' },
-                { label: 'Min price', value: '€2.99' },
-              ]},
-              { name: 'Bolt', color: 'green', rates: [
-                { label: 'Fixed fee', value: 'None' },
-                { label: 'Per minute', value: '€0.11' },
-                { label: 'Per hour', value: '€4.40' },
-                { label: 'Per day', value: '€16.90' },
-                { label: 'Per km', value: '€0.26' },
-                { label: 'Min price', value: '€2.35' },
-              ]},
-              { name: 'CarGuru', color: 'blue', rates: [
-                { label: 'Fixed fee', value: '€0.99' },
-                { label: 'Per minute', value: '€0.09' },
-                { label: 'Per hour', value: '€5.40' },
-                { label: 'Per day', value: '€20.99' },
-                { label: 'Per km', value: '€0.23' },
-                { label: 'Min price', value: '€2.00' },
-              ]},
-            ].map((provider) => (
-              <div
-                key={provider.name}
-                className={`rounded-xl border p-5 ${
-                  provider.color === 'orange'
-                    ? 'border-orange-500/20 bg-orange-500/5'
-                    : provider.color === 'green'
-                      ? 'border-green-500/20 bg-green-500/5'
-                      : 'border-blue-500/20 bg-blue-500/5'
-                }`}
-              >
-                <h3 className={`text-lg font-bold mb-4 ${
-                  provider.color === 'orange' ? 'text-orange-400'
-                    : provider.color === 'green' ? 'text-green-400'
-                      : 'text-blue-400'
-                }`}>{provider.name}</h3>
-                <div className="space-y-2.5">
-                  {provider.rates.map((rate) => (
-                    <div key={rate.label} className="flex justify-between text-sm">
-                      <span className="text-zinc-500">{rate.label}</span>
-                      <span className="text-zinc-300 font-medium">{rate.value}</span>
-                    </div>
-                  ))}
+            {standardRates.map((rate) => {
+              const styles = RATE_CARD_STYLES[rate.provider];
+              return (
+                <div
+                  key={rate.provider}
+                  className={`rounded-xl border p-5 ${styles.card}`}
+                >
+                  <h3 className={`text-lg font-bold mb-4 ${styles.heading}`}>{rate.provider}</h3>
+                  <div className="space-y-2.5">
+                    {getRateRows(rate).map((item) => (
+                      <div key={item.label} className="flex justify-between text-sm">
+                        <span className="text-zinc-500">{item.label}</span>
+                        <span className="text-zinc-300 font-medium">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-8 pt-6 border-t border-zinc-800">
