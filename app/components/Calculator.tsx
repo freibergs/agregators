@@ -1,20 +1,24 @@
 'use client';
 
 import React from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { motion, AnimatePresence } from 'framer-motion';
-import { findBestPackage, formatPrice, formatTime, standardRates } from '../lib/data';
-import { Clock, MapPin, Trophy, Loader2 } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Clock, Info, MapPin, Trophy } from 'lucide-react';
 import Image from 'next/image';
+import {
+  formatPrice,
+  formatTime,
+  getExtraChargeBreakdown,
+  type FindBestPackageResult,
+  type Provider,
+} from '../lib/data';
+import { DEFAULT_TRIP_FORM_VALUES, type TripFormValues } from '../lib/trip';
 
-interface FormInputs {
-  days: number;
-  hours: number;
-  minutes: number;
-  distance: number;
-  providers: {
-    [key: string]: boolean;
-  };
+interface CalculatorProps {
+  defaultValues?: TripFormValues;
+  result: FindBestPackageResult | null;
+  showResult: boolean;
+  onFormChange: (values: TripFormValues) => void;
 }
 
 const PROVIDER_COLORS: Record<string, { bg: string; border: string; text: string; glow: string; badge: string }> = {
@@ -41,55 +45,68 @@ const PROVIDER_COLORS: Record<string, { bg: string; border: string; text: string
   },
 };
 
-const Calculator: React.FC = () => {
-  const { control, handleSubmit, watch } = useForm<FormInputs>({
-    defaultValues: {
-      days: 0,
-      hours: 0,
-      minutes: 0,
-      distance: 0,
-      providers: { CityBee: true, Bolt: true, CarGuru: true },
-    },
+type PartialTripFormValues = Omit<Partial<TripFormValues>, 'providers'> & {
+  providers?: Partial<Record<Provider, boolean>>;
+};
+
+const toTripFormValues = (values: PartialTripFormValues): TripFormValues => ({
+  days: Number(values.days ?? DEFAULT_TRIP_FORM_VALUES.days),
+  hours: Number(values.hours ?? DEFAULT_TRIP_FORM_VALUES.hours),
+  minutes: Number(values.minutes ?? DEFAULT_TRIP_FORM_VALUES.minutes),
+  distance: Number(values.distance ?? DEFAULT_TRIP_FORM_VALUES.distance),
+  providers: {
+    CityBee: Boolean(values.providers?.CityBee ?? DEFAULT_TRIP_FORM_VALUES.providers.CityBee),
+    Bolt: Boolean(values.providers?.Bolt ?? DEFAULT_TRIP_FORM_VALUES.providers.Bolt),
+    CarGuru: Boolean(values.providers?.CarGuru ?? DEFAULT_TRIP_FORM_VALUES.providers.CarGuru),
+  },
+});
+
+const parseIntegerInput = (rawValue: string) => {
+  const digitsOnly = rawValue.replace(/\D/g, '');
+  if (!digitsOnly) {
+    return 0;
+  }
+
+  return Number(digitsOnly.replace(/^0+(?=\d)/, ''));
+};
+
+const Calculator: React.FC<CalculatorProps> = ({
+  defaultValues = DEFAULT_TRIP_FORM_VALUES,
+  result,
+  showResult,
+  onFormChange,
+}) => {
+  const { control, handleSubmit, watch } = useForm<TripFormValues>({
+    defaultValues,
   });
 
+  React.useEffect(() => {
+    const subscription = watch((values) => {
+      onFormChange(toTripFormValues(values));
+    });
+
+    return () => subscription.unsubscribe();
+  }, [onFormChange, watch]);
+
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-  const [result, setResult] = React.useState<ReturnType<typeof findBestPackage> | null>(null);
-  const [isCalculating, setIsCalculating] = React.useState(false);
-
-  const onSubmit = async (data: FormInputs) => {
-    setIsCalculating(true);
-    const totalMinutes = data.days * 24 * 60 + data.hours * 60 + data.minutes;
-    const selectedProviders = Object.entries(data.providers)
-      .filter(([, selected]) => selected)
-      .map(([provider]) => provider) as ('CityBee' | 'Bolt' | 'CarGuru')[];
-
-    if (selectedProviders.length === 0) {
-      alert('Please select at least one provider');
-      setIsCalculating(false);
-      return;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    const calculationResult = findBestPackage(totalMinutes, data.distance, selectedProviders);
-    setResult(calculationResult);
-    setIsCalculating(false);
-  };
-
-  const providersData = [
+  const providersData: Array<{ id: Provider; image: string; fullWidth: number; fullHeight: number }> = [
     { id: 'CityBee', image: `${basePath}/citybee.png`, fullWidth: 400, fullHeight: 200 },
     { id: 'Bolt', image: `${basePath}/bolt.png`, fullWidth: 400, fullHeight: 200 },
     { id: 'CarGuru', image: `${basePath}/carguru.png`, fullWidth: 400, fullHeight: 200 },
   ];
 
-  const watchAllFields = watch();
+  const watchAllFields = toTripFormValues(watch());
+  const currentTotalMinutes =
+    watchAllFields.days * 24 * 60 +
+    watchAllFields.hours * 60 +
+    watchAllFields.minutes;
   const isValid =
-    (watchAllFields.days > 0 || watchAllFields.hours > 0 || watchAllFields.minutes > 0) &&
-    Object.values(watchAllFields.providers || {}).some((v) => v === true);
+    currentTotalMinutes > 0 &&
+    Object.values(watchAllFields.providers || {}).some((value) => value === true);
 
   return (
     <div className="max-w-2xl mx-auto glass-card p-8">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        {/* Provider Selection */}
+      <form onSubmit={handleSubmit(() => undefined)} className="space-y-8">
         <div className="space-y-3">
           <label className="block text-xs font-medium text-zinc-500 uppercase tracking-wider">Providers</label>
           <div className="flex gap-4 justify-center">
@@ -138,7 +155,6 @@ const Calculator: React.FC = () => {
           </div>
         </div>
 
-        {/* Time Inputs */}
         <div className="space-y-3">
           <label className="block text-xs font-medium text-zinc-500 uppercase tracking-wider">Trip Duration</label>
           <div className="grid grid-cols-3 gap-3">
@@ -151,13 +167,17 @@ const Calculator: React.FC = () => {
                 render={({ field: fieldProps }) => (
                   <div className="relative">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       {...fieldProps}
-                      onChange={(e) => fieldProps.onChange(Number(e.target.value))}
+                      value={String(fieldProps.value ?? 0)}
+                      onChange={(event) => {
+                        const parsedValue = parseIntegerInput(event.target.value);
+                        const maxValue = field === 'hours' ? 23 : field === 'minutes' ? 59 : Number.MAX_SAFE_INTEGER;
+                        fieldProps.onChange(Math.min(parsedValue, maxValue));
+                      }}
                       className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition-colors text-center text-lg font-medium"
                       placeholder="0"
-                      min="0"
-                      max={field === 'hours' ? 23 : field === 'minutes' ? 59 : undefined}
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-zinc-600" />
@@ -172,7 +192,6 @@ const Calculator: React.FC = () => {
           </div>
         </div>
 
-        {/* Distance */}
         <div className="space-y-3 pt-2">
           <label className="block text-xs font-medium text-zinc-500 uppercase tracking-wider">Distance (km)</label>
           <Controller
@@ -182,12 +201,13 @@ const Calculator: React.FC = () => {
             render={({ field }) => (
               <div className="relative">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  value={String(field.value ?? 0)}
+                  onChange={(event) => field.onChange(parseIntegerInput(event.target.value))}
                   className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition-colors text-lg font-medium"
                   placeholder="0"
-                  min="0"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <MapPin className="w-4 h-4 text-zinc-600" />
@@ -196,40 +216,31 @@ const Calculator: React.FC = () => {
             )}
           />
         </div>
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={!isValid || isCalculating}
-          className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 relative overflow-hidden ${
-            isValid && !isCalculating
-              ? 'bg-gradient-to-r from-orange-500 via-pink-500 to-blue-500 text-white hover:shadow-lg hover:shadow-orange-500/20 hover:scale-[1.01] active:scale-[0.99]'
-              : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-          }`}
-        >
-          <span className={`transition-opacity duration-200 ${isCalculating ? 'opacity-0' : 'opacity-100'}`}>
-            Calculate Best Price
-          </span>
-          {isCalculating && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="w-5 h-5 text-white animate-spin" />
-            </div>
-          )}
-        </button>
       </form>
 
-      {/* Results */}
+      <div className="mt-6 rounded-2xl border border-zinc-800/60 bg-zinc-900/30 px-4 py-3">
+        <p className="text-sm text-zinc-400">
+          {isValid
+            ? 'Prices and graphs update automatically while you type.'
+            : 'Enter trip duration and keep at least one provider selected to see live results.'}
+        </p>
+        {watchAllFields.providers.CarGuru && (
+          <p className="mt-2 text-xs text-zinc-500">
+            CarGuru uses your distance to estimate driving time. The remaining duration is treated as waiting time.
+          </p>
+        )}
+      </div>
+
       <AnimatePresence mode="wait">
-        {result && (
+        {showResult && result && (
           <motion.div
             key="results"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.4 }}
-            className="mt-8 space-y-4"
+            className="mt-8 space-y-4 relative z-40 overflow-visible"
           >
-            {/* Best Overall Deal */}
             <div
               className={`p-5 rounded-xl border ${
                 PROVIDER_COLORS[result.bestOverall.provider].border
@@ -267,23 +278,31 @@ const Calculator: React.FC = () => {
               </div>
             </div>
 
-            {/* Per-provider Results */}
             {Object.keys(result.bestByProvider).length > 1 && (
               <div
                 className={`grid gap-3 ${
-                  Object.keys(result.bestByProvider).length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+                  Object.keys(result.bestByProvider).length === 2 ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-3'
                 }`}
               >
                 {Object.entries(result.bestByProvider).map(([provider, data]) => {
                   const colors = PROVIDER_COLORS[provider];
                   const isBest = data.totalPrice === result.bestOverall.price;
+                  const extraBreakdown = data.bestPackage
+                    ? getExtraChargeBreakdown(
+                        data.bestPackage.provider,
+                        data.bestPackage.time,
+                        data.bestPackage.distance,
+                        currentTotalMinutes,
+                        watchAllFields.distance
+                      )
+                    : null;
                   return (
                     <motion.div
                       key={provider}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.1 }}
-                      className={`relative p-4 rounded-xl border group ${colors.border} ${colors.bg}`}
+                      className={`relative p-4 rounded-xl border group overflow-visible ${colors.border} ${colors.bg}`}
                     >
                       {isBest && (
                         <div className="absolute -top-2 -right-2">
@@ -294,43 +313,50 @@ const Calculator: React.FC = () => {
                       {data.bestPackage ? (
                         <div className="mt-2">
                           <div className="relative">
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-xs text-zinc-500 inline-flex items-center gap-1">
                               {data.bestPackage.name}
-                              <span className="ml-1 cursor-help text-zinc-600">i</span>
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center text-zinc-500"
+                                aria-label="Show package details"
+                              >
+                                <Info className="w-3.5 h-3.5" />
+                              </button>
                             </p>
-                            <div className="invisible group-hover:visible absolute z-20 w-64 p-3 glass-card border border-zinc-700/50 mt-1 text-xs">
+                            <div className="invisible pointer-events-none opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 absolute left-0 bottom-full mb-2 z-50 w-72 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-xs shadow-2xl">
                               <p className="font-semibold text-white mb-2">Package Details</p>
                               <div className="space-y-2">
                                 <div className="flex justify-between">
-                                  <span className="text-zinc-500">Base Package</span>
-                                  <span className="text-zinc-300">€{formatPrice(data.bestPackage.price)}</span>
+                                  <span className="text-zinc-400">Base Package</span>
+                                  <span className="text-zinc-200">€{formatPrice(data.bestPackage.price)}</span>
                                 </div>
-                                {data.extraCharge > 0 && (
+                                {extraBreakdown && extraBreakdown.total > 0 && (
                                   <>
                                     <div className="border-t border-zinc-700/50 pt-2">
-                                      <p className="text-zinc-400 font-medium mb-1">Extra Charges:</p>
-                                      {data.bestPackage && (watchAllFields.hours * 60 + watchAllFields.minutes) > data.bestPackage.time && (
-                                        <div className="flex justify-between text-zinc-500">
-                                          <span>{formatTime((watchAllFields.hours * 60 + watchAllFields.minutes) - data.bestPackage.time)}</span>
-                                          <span>€{(() => {
-                                            const rate = standardRates.find(r => r.provider === data.bestPackage?.provider);
-                                            return formatPrice(rate ? ((watchAllFields.hours * 60 + watchAllFields.minutes) - data.bestPackage!.time) * rate.minuteRate : 0);
-                                          })()}</span>
+                                      <p className="text-zinc-300 font-medium mb-1">Extra Charges:</p>
+                                      {extraBreakdown.timeCharge > 0 && (
+                                        <div className="flex justify-between text-zinc-400">
+                                          <span>Time overage ({formatTime(Math.round(extraBreakdown.extraMinutes))})</span>
+                                          <span>€{formatPrice(extraBreakdown.timeCharge)}</span>
                                         </div>
                                       )}
-                                      {data.bestPackage && watchAllFields.distance > data.bestPackage.distance && (
-                                        <div className="flex justify-between text-zinc-500">
-                                          <span>{watchAllFields.distance - data.bestPackage.distance}km</span>
-                                          <span>€{(() => {
-                                            const rate = standardRates.find(r => r.provider === data.bestPackage?.provider);
-                                            return formatPrice(rate ? (watchAllFields.distance - data.bestPackage!.distance) * rate.kmRate : 0);
-                                          })()}</span>
+                                      {extraBreakdown.distanceCharge > 0 && (
+                                        <div className="flex justify-between text-zinc-400">
+                                          <span>{extraBreakdown.extraDistanceKm}km over distance</span>
+                                          <span>€{formatPrice(extraBreakdown.distanceCharge)}</span>
                                         </div>
+                                      )}
+                                      {extraBreakdown.usesEstimatedDrivingWaitSplit && extraBreakdown.timeCharge > 0 && (
+                                        <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
+                                          Estimated CarGuru split: {formatTime(Math.round(extraBreakdown.estimatedDrivingMinutes)) || '0min'} driving
+                                          {' + '}
+                                          {formatTime(Math.round(extraBreakdown.estimatedWaitingMinutes)) || '0min'} waiting.
+                                        </p>
                                       )}
                                     </div>
                                     <div className="flex justify-between font-medium border-t border-zinc-700/50 pt-1 text-zinc-300">
                                       <span>Total Extra</span>
-                                      <span>€{formatPrice(data.extraCharge)}</span>
+                                      <span>€{formatPrice(extraBreakdown.total)}</span>
                                     </div>
                                   </>
                                 )}
@@ -343,7 +369,31 @@ const Calculator: React.FC = () => {
                         </div>
                       ) : (
                         <div className="mt-2">
-                          <p className="text-xs text-zinc-500">Standard Price</p>
+                          <div className="relative">
+                            <p className="text-xs text-zinc-500 inline-flex items-center gap-1">
+                              Standard Price
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center text-zinc-500"
+                                aria-label="Show standard price details"
+                              >
+                                <Info className="w-3.5 h-3.5" />
+                              </button>
+                            </p>
+                            <div className="invisible pointer-events-none opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 absolute left-0 bottom-full mb-2 z-50 w-72 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-xs shadow-2xl">
+                              <p className="font-semibold text-white mb-2">Standard Price Details</p>
+                              <div className="space-y-2">
+                                <div className="flex justify-between">
+                                  <span className="text-zinc-400">Type</span>
+                                  <span className="text-zinc-200">No package used</span>
+                                </div>
+                                <div className="flex justify-between font-medium border-t border-zinc-700/50 pt-2 text-zinc-200">
+                                  <span>Total</span>
+                                  <span>€{formatPrice(data.bestStandard)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           <p className={`text-xl font-bold ${colors.text}`}>€{formatPrice(data.bestStandard)}</p>
                         </div>
                       )}

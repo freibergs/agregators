@@ -1,10 +1,10 @@
-# CityBee vs Bolt Car Sharing Calculator
+# shary
 
-This application helps users find the most cost-effective car sharing option between CityBee and Bolt based on trip duration and distance. The calculator compares standard rates and all available packages to find the best deal.
+shary helps users find the most cost-effective car sharing option between CityBee, Bolt, and CarGuru based on trip duration and distance. The calculator compares standard rates and available packages to find the best deal.
 
 ## Features
 
-- Calculate and compare prices between CityBee and Bolt
+- Calculate and compare prices between CityBee, Bolt, and CarGuru
 - Find the best package for your specific trip
 - Account for extra charges when exceeding package limits
 - Interactive visualizations of prices, time, and distance
@@ -16,7 +16,7 @@ This application helps users find the most cost-effective car sharing option bet
 - [Next.js](https://nextjs.org/) - React framework
 - [TypeScript](https://www.typescriptlang.org/) - Type safety
 - [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [Chart.js](https://www.chartjs.org/) - Data visualization
+- [Recharts](https://recharts.org/) - Data visualization
 - [React Hook Form](https://react-hook-form.com/) - Form handling
 
 ## Getting Started
@@ -67,8 +67,8 @@ yarn start
 
 The calculator performs the following operations:
 
-1. Calculates standard prices based on time and distance for both services
-2. Checks all available packages from both providers
+1. Calculates standard prices based on time and distance for all supported services
+2. Checks all available packages from each provider
 3. Calculates any additional charges if package limits are exceeded
 4. Recommends the most cost-effective option
 
@@ -78,6 +78,7 @@ The pricing information is based on current (as of project creation) rates for:
 
 - CityBee (orange cars)
 - Bolt (green cars)
+- CarGuru (blue cars)
 
 Prices and packages are subject to change, so it's advisable to verify the information with the service providers.
 

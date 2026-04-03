@@ -1,5 +1,7 @@
+export type Provider = 'CityBee' | 'Bolt' | 'CarGuru';
+
 export interface Package {
-  provider: 'CityBee' | 'Bolt' | 'CarGuru';
+  provider: Provider;
   time: number; // minutes
   distance: number; // kilometers
   price: number;
@@ -7,12 +9,16 @@ export interface Package {
 }
 
 export interface StandardRate {
-  provider: 'CityBee' | 'Bolt' | 'CarGuru';
+  provider: Provider;
   fixedFee: number;
   minuteRate: number;
+  nightMinuteRate?: number;
+  waitingDayRate?: number;
+  waitingNightRate?: number;
   hourRate: number;
   dayRate: number;
   kmRate: number;
+  includedKmPer24h?: number;
   minPrice: number | null;
 }
 
@@ -39,13 +45,19 @@ export const standardRates: StandardRate[] = [
   {
     provider: 'CarGuru',
     fixedFee: 0.99,
-    minuteRate: 0.09,
-    hourRate: 5.40, // Calculated from minute rate
-    dayRate: 20.99,
+    minuteRate: 0.24,
+    nightMinuteRate: 0.24,
+    waitingDayRate: 0.07,
+    waitingNightRate: 0,
+    hourRate: 14.40, // Derived from minute rate; package bundles are handled separately
+    dayRate: 345.60, // Derived from minute rate; package bundles are handled separately
     kmRate: 0.23,
+    includedKmPer24h: 100,
     minPrice: 2.00
   }
 ];
+
+const CARGURU_ASSUMED_AVERAGE_SPEED_KMH = 30;
 
 const applyMinimumPrice = (price: number, rate: StandardRate): number => {
   if (rate.minPrice === null) {
@@ -53,6 +65,79 @@ const applyMinimumPrice = (price: number, rate: StandardRate): number => {
   }
 
   return Math.max(price, rate.minPrice);
+};
+
+const getIncludedDistance = (rate: StandardRate, timeInMinutes: number): number => {
+  if (!rate.includedKmPer24h) {
+    return 0;
+  }
+
+  const fullDays = Math.floor(timeInMinutes / 1440);
+  return fullDays * rate.includedKmPer24h;
+};
+
+const calculateBestTimePrice = (rate: StandardRate, timeInMinutes: number): number => {
+  // Calculate using minutes
+  const totalByMinutes = timeInMinutes * rate.minuteRate;
+
+  // Calculate using hours
+  const totalHours = Math.floor(timeInMinutes / 60);
+  const leftoverMinutes = timeInMinutes % 60;
+  const totalByHours = (totalHours * rate.hourRate) + (leftoverMinutes * rate.minuteRate);
+
+  // Calculate using days - check both current and next day
+  const currentDays = Math.floor(timeInMinutes / 1440);
+  const nextDays = currentDays + 1;
+  const remainingMinutes = timeInMinutes % 1440;
+  const remainingHours = Math.floor(remainingMinutes / 60);
+  const finalMinutes = remainingMinutes % 60;
+
+  const currentDayPrice = currentDays * rate.dayRate;
+  let remainingTimePrice = 0;
+
+  if (remainingHours > 0) {
+    const byHourPrice = remainingHours * rate.hourRate;
+    const byMinutePrice = remainingHours * 60 * rate.minuteRate;
+    remainingTimePrice += Math.min(byHourPrice, byMinutePrice);
+  }
+  remainingTimePrice += finalMinutes * rate.minuteRate;
+
+  const currentDayTotal = currentDayPrice + remainingTimePrice;
+  const nextDayTotal = nextDays * rate.dayRate;
+
+  return Math.min(
+    totalByMinutes,
+    totalByHours,
+    currentDayTotal,
+    nextDayTotal
+  );
+};
+
+const getCarGuruWaitingRate = (rate: StandardRate): number => rate.waitingDayRate ?? rate.minuteRate;
+
+const estimateCarGuruTimeSplit = (timeInMinutes: number, distanceInKm: number) => {
+  const estimatedDrivingMinutes = Math.min(
+    Math.max(0, timeInMinutes),
+    (Math.max(0, distanceInKm) / CARGURU_ASSUMED_AVERAGE_SPEED_KMH) * 60
+  );
+
+  return {
+    drivingMinutes: estimatedDrivingMinutes,
+    waitingMinutes: Math.max(0, timeInMinutes - estimatedDrivingMinutes),
+  };
+};
+
+const calculateCarGuruTimePrice = (
+  rate: StandardRate,
+  timeInMinutes: number,
+  distanceInKm: number
+): number => {
+  const { drivingMinutes, waitingMinutes } = estimateCarGuruTimeSplit(timeInMinutes, distanceInKm);
+
+  return (
+    (drivingMinutes * rate.minuteRate) +
+    (waitingMinutes * getCarGuruWaitingRate(rate))
+  );
 };
 
 // Predefined packages from CityBee
@@ -209,153 +294,143 @@ export const boltPackages: Package[] = [
   { provider: 'Bolt', time: 10080, distance: 2000, price: 664.30, name: '7d+2000km' },
 ];
 
-// Predefined packages from CarGuru (simulated for comparison)
+// Predefined packages from CarGuru
 export const carGuruPackages: Package[] = [
-  // Short trips
-  { provider: 'CarGuru', time: 60, distance: 10, price: 0.99 + (60 * 0.09) + (10 * 0.23), name: '1h+10km' },
-  { provider: 'CarGuru', time: 120, distance: 20, price: 0.99 + (120 * 0.09) + (20 * 0.23), name: '2h+20km' },
-  { provider: 'CarGuru', time: 180, distance: 30, price: 0.99 + (180 * 0.09) + (30 * 0.23), name: '3h+30km' },
-  
-  // Medium trips
-  { provider: 'CarGuru', time: 360, distance: 50, price: 0.99 + (360 * 0.09) + (50 * 0.23), name: '6h+50km' },
-  { provider: 'CarGuru', time: 720, distance: 100, price: 0.99 + (720 * 0.09) + (100 * 0.23), name: '12h+100km' },
-  
-  // Day trips (using day rate when cheaper)
-  { provider: 'CarGuru', time: 1440, distance: 100, price: 0.99 + 20.99 + (100 * 0.23), name: '1d+100km' },
-  { provider: 'CarGuru', time: 1440, distance: 200, price: 0.99 + 20.99 + (200 * 0.23), name: '1d+200km' },
-  { provider: 'CarGuru', time: 2880, distance: 300, price: 0.99 + (2 * 20.99) + (300 * 0.23), name: '2d+300km' },
-  { provider: 'CarGuru', time: 4320, distance: 500, price: 0.99 + (3 * 20.99) + (500 * 0.23), name: '3d+500km' },
-  
-  // Weekly trips
-  { provider: 'CarGuru', time: 10080, distance: 750, price: 0.99 + (7 * 20.99) + (750 * 0.23), name: '7d+750km' },
-  { provider: 'CarGuru', time: 10080, distance: 1000, price: 0.99 + (7 * 20.99) + (1000 * 0.23), name: '7d+1000km' },
+  // Time bundles; extra distance is charged separately at the standard km rate.
+  { provider: 'CarGuru', time: 60, distance: 0, price: 11.49, name: '1h' },
+  { provider: 'CarGuru', time: 180, distance: 0, price: 24.99, name: '3h' },
+  { provider: 'CarGuru', time: 2880, distance: 200, price: 84.99, name: '2d' },
+  { provider: 'CarGuru', time: 4320, distance: 300, price: 109.99, name: '3d' },
+  { provider: 'CarGuru', time: 10080, distance: 700, price: 224.99, name: '7d' },
+  { provider: 'CarGuru', time: 20160, distance: 1400, price: 399.99, name: '14d' },
+  { provider: 'CarGuru', time: 43200, distance: 3000, price: 799.99, name: '30d' },
 ];
-
-// Note: These CarGuru packages are simulated for comparison purposes.
-// CarGuru does not currently offer any predefined packages.
 
 // All packages
 export const allPackages = [...cityBeePackages, ...boltPackages, ...carGuruPackages];
 
 // Calculate the price using the standard rate
 export const calculateStandardPrice = (
-  provider: 'CityBee' | 'Bolt' | 'CarGuru',
+  provider: Provider,
   timeInMinutes: number,
   distanceInKm: number
 ): number => {
   const rate = standardRates.find(r => r.provider === provider);
   if (!rate) return 0;
 
-  // Calculate using minutes
-  const totalByMinutes = timeInMinutes * rate.minuteRate;
+  const timePrice =
+    provider === 'CarGuru'
+      ? calculateCarGuruTimePrice(rate, timeInMinutes, distanceInKm)
+      : calculateBestTimePrice(rate, timeInMinutes);
 
-  // Calculate using hours
-  const totalHours = Math.floor(timeInMinutes / 60);
-  const leftoverMinutes = timeInMinutes % 60;
-  const totalByHours = (totalHours * rate.hourRate) + (leftoverMinutes * rate.minuteRate);
-
-  // Calculate using days - check both current and next day
-  const currentDays = Math.floor(timeInMinutes / 1440);
-  const nextDays = currentDays + 1;
-  
-  // Current day calculation
-  const remainingMinutes = timeInMinutes % 1440;
-  const remainingHours = Math.floor(remainingMinutes / 60);
-  const finalMinutes = remainingMinutes % 60;
-
-  const currentDayPrice = currentDays * rate.dayRate;
-  let remainingTimePrice = 0;
-  
-  if (remainingHours > 0) {
-    const byHourPrice = remainingHours * rate.hourRate;
-    const byMinutePrice = remainingHours * 60 * rate.minuteRate;
-    remainingTimePrice += Math.min(byHourPrice, byMinutePrice);
-  }
-  remainingTimePrice += finalMinutes * rate.minuteRate;
-  
-  const currentDayTotal = currentDayPrice + remainingTimePrice;
-
-  // Next day calculation (just use the full day rate)
-  const nextDayTotal = nextDays * rate.dayRate;
-
-  // Use the minimum of all calculation methods
-  const timePrice = Math.min(
-    totalByMinutes,
-    totalByHours,
-    currentDayTotal,
-    nextDayTotal
-  );
-
-  const distancePrice = distanceInKm * rate.kmRate;
+  const includedDistance = getIncludedDistance(rate, timeInMinutes);
+  const chargeableDistance = Math.max(0, distanceInKm - includedDistance);
+  const distancePrice = chargeableDistance * rate.kmRate;
   const calculatedPrice = rate.fixedFee + timePrice + distancePrice;
   
   return applyMinimumPrice(calculatedPrice, rate);
 };
 
+export interface ExtraChargeBreakdown {
+  extraMinutes: number;
+  extraDistanceKm: number;
+  timeCharge: number;
+  distanceCharge: number;
+  total: number;
+  usesEstimatedDrivingWaitSplit: boolean;
+  estimatedDrivingMinutes: number;
+  estimatedWaitingMinutes: number;
+}
+
+export const getExtraChargeBreakdown = (
+  provider: Provider,
+  packageTime: number,
+  packageDistance: number,
+  actualTime: number,
+  actualDistance: number
+): ExtraChargeBreakdown => {
+  const rate = standardRates.find(r => r.provider === provider);
+  if (!rate) {
+    return {
+      extraMinutes: 0,
+      extraDistanceKm: 0,
+      timeCharge: 0,
+      distanceCharge: 0,
+      total: 0,
+      usesEstimatedDrivingWaitSplit: false,
+      estimatedDrivingMinutes: 0,
+      estimatedWaitingMinutes: 0,
+    };
+  }
+
+  const extraMinutes = Math.max(0, actualTime - packageTime);
+  let timeCharge = 0;
+  let usesEstimatedDrivingWaitSplit = false;
+  let estimatedDrivingMinutes = 0;
+  let estimatedWaitingMinutes = 0;
+
+  if (extraMinutes > 0) {
+    if (provider === 'CarGuru') {
+      const totalSplit = estimateCarGuruTimeSplit(actualTime, actualDistance);
+      const drivingShare = actualTime > 0 ? totalSplit.drivingMinutes / actualTime : 0;
+
+      estimatedDrivingMinutes = Math.min(extraMinutes, extraMinutes * drivingShare);
+      estimatedWaitingMinutes = Math.max(0, extraMinutes - estimatedDrivingMinutes);
+      timeCharge =
+        (estimatedDrivingMinutes * rate.minuteRate) +
+        (estimatedWaitingMinutes * getCarGuruWaitingRate(rate));
+      usesEstimatedDrivingWaitSplit = true;
+    } else {
+      timeCharge = calculateBestTimePrice(rate, extraMinutes);
+    }
+  }
+
+  const packageIncludedDistance = getIncludedDistance(rate, packageTime);
+  const actualIncludedDistance = getIncludedDistance(rate, actualTime);
+  const extraIncludedDistance = Math.max(0, actualIncludedDistance - packageIncludedDistance);
+  const effectivePackageDistance = packageDistance + extraIncludedDistance;
+  const extraDistanceKm = Math.max(0, actualDistance - effectivePackageDistance);
+  const distanceCharge = extraDistanceKm * rate.kmRate;
+
+  return {
+    extraMinutes,
+    extraDistanceKm,
+    timeCharge,
+    distanceCharge,
+    total: timeCharge + distanceCharge,
+    usesEstimatedDrivingWaitSplit,
+    estimatedDrivingMinutes,
+    estimatedWaitingMinutes,
+  };
+};
+
 // Calculate extra charges for package overages
 export const calculateExtraCharges = (
-  provider: 'CityBee' | 'Bolt' | 'CarGuru',
+  provider: Provider,
   packageTime: number,
   packageDistance: number,
   actualTime: number,
   actualDistance: number
 ): number => {
-
-  if (actualTime <= packageTime && actualDistance <= packageDistance) {
-    return 0;
-  }
-
-  const rate = standardRates.find(r => r.provider === provider);
-  if (!rate) return 0;
-
-  let extraCharge = 0;
-
-  // Calculate extra time charges
-  if (actualTime > packageTime) {
-    const extraMinutes = actualTime - packageTime;
-    
-    // Calculate using minutes
-    const byMinutePrice = extraMinutes * rate.minuteRate;
-
-    // Calculate using hours
-    const totalHours = Math.floor(extraMinutes / 60);
-    const leftoverMinutes = extraMinutes % 60;
-    const byHourPrice = (totalHours * rate.hourRate) + (leftoverMinutes * rate.minuteRate);
-
-    // Calculate using days
-    const days = Math.floor(extraMinutes / 1440);
-    const remainingMinutes = extraMinutes % 1440;
-    const remainingHours = Math.floor(remainingMinutes / 60);
-    const finalMinutes = remainingMinutes % 60;
-    const byDayPrice = 
-      (days * rate.dayRate) +
-      (remainingHours * Math.min(rate.hourRate, remainingHours * 60 * rate.minuteRate)) +
-      (finalMinutes * rate.minuteRate);
-
-    const timeCharge = Math.min(byMinutePrice, byHourPrice, byDayPrice);
-    extraCharge += timeCharge;
-  }
-
-  // Calculate extra distance charges
-  if (actualDistance > packageDistance) {
-    const extraDistance = actualDistance - packageDistance;
-    const distanceCharge = extraDistance * rate.kmRate;
-    extraCharge += distanceCharge;
-  }
-
-  return extraCharge;
+  return getExtraChargeBreakdown(
+    provider,
+    packageTime,
+    packageDistance,
+    actualTime,
+    actualDistance
+  ).total;
 };
 
-type BestResult = 
+export type BestResult = 
   | {
       type: 'standard';
-      provider: 'CityBee' | 'Bolt' | 'CarGuru';
+      provider: Provider;
       price: number;
       extraCharge: number;
     }
   | {
       type: 'package';
-      provider: 'CityBee' | 'Bolt' | 'CarGuru';
+      provider: Provider;
       package: Package;
       price: number;
       extraCharge: number;
@@ -365,11 +440,11 @@ type BestResult =
 export const findBestPackage = (
   timeInMinutes: number,
   distanceInKm: number,
-  selectedProviders: ('CityBee' | 'Bolt' | 'CarGuru')[]
+  selectedProviders: Provider[]
 ): { 
   bestOverall: BestResult;
   bestByProvider: {
-    [key in 'CityBee' | 'Bolt' | 'CarGuru']?: {
+    [key in Provider]?: {
       bestPackage: Package | null;
       bestStandard: number;
       totalPrice: number;
@@ -384,7 +459,7 @@ export const findBestPackage = (
       provider,
       calculateStandardPrice(provider, timeInMinutes, distanceInKm)
     ])
-  ) as { [key in 'CityBee' | 'Bolt' | 'CarGuru']?: number };
+  ) as { [key in Provider]?: number };
 
 
   // Initialize best results for each provider
@@ -404,7 +479,7 @@ export const findBestPackage = (
       bestOverallPrice = price;
       bestOverall = {
         type: 'standard',
-        provider: provider as 'CityBee' | 'Bolt' | 'CarGuru',
+        provider: provider as Provider,
         price: price,
         extraCharge: 0
       };
@@ -473,6 +548,8 @@ export const findBestPackage = (
     }}
   };
 };
+
+export type FindBestPackageResult = ReturnType<typeof findBestPackage>;
 
 // Format price for display
 export const formatPrice = (price: number): string => {
@@ -552,7 +629,7 @@ export const generateStandardPriceData = (property: 'time' | 'distance') => {
   const { maxTime, maxDistance } = getMaxValues();
   const maxValue = property === 'time' ? maxTime : maxDistance;
 
-  const generatePoints = (provider: 'CityBee' | 'Bolt' | 'CarGuru') => {
+  const generatePoints = (provider: Provider) => {
     const points: Array<{x: number, y: number}> = [];
     const rate = standardRates.find(r => r.provider === provider);
     if (!rate) return points;

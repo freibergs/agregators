@@ -100,6 +100,23 @@ body {
   filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.5));
 }
 
+.recharts-brush .recharts-brush-slide {
+  fill: rgba(39, 39, 42, 0.55);
+  stroke: rgba(113, 113, 122, 0.45);
+  stroke-width: 1;
+}
+
+.recharts-brush .recharts-brush-traveller rect {
+  fill: rgba(63, 63, 70, 0.9);
+  stroke: rgba(161, 161, 170, 0.75);
+  stroke-width: 1;
+}
+
+.recharts-brush .recharts-brush-traveller line {
+  stroke: rgba(228, 228, 231, 0.9);
+  stroke-width: 1.8;
+}
+
 /* Number input spinner hide */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {

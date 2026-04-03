@@ -148,7 +148,7 @@ export default function PackageComparison() {
         <div className="px-6 py-3 border-t border-zinc-800/50 flex items-start gap-2 bg-blue-500/5">
           <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
           <p className="text-xs text-blue-400/80">
-            CarGuru packages are simulated for comparison. CarGuru does not currently offer predefined packages.
+            CarGuru package prices are time bundles. Extra distance is charged separately using the standard per-km rate.
           </p>
         </div>
       )}

@@ -6,6 +6,7 @@ import Calculator from './components/Calculator';
 import PriceComparisonChart from './components/PriceComparisonChart';
 import PackageComparison from './components/PackageComparison';
 import { standardRates, type StandardRate } from './lib/data';
+import { buildTripScenario, DEFAULT_TRIP_FORM_VALUES, type TripFormValues } from './lib/trip';
 import { ArrowUp, ArrowDown, Car, Zap, Shield, TrendingDown } from 'lucide-react';
 
 const RATE_CARD_STYLES: Record<StandardRate['provider'], { card: string; heading: string }> = {
@@ -36,16 +37,38 @@ const formatRateValue = (value: number | null, options?: { zeroAsNone?: boolean 
 };
 
 const getRateRows = (rate: StandardRate) => [
-  { label: 'Fixed fee', value: formatRateValue(rate.fixedFee, { zeroAsNone: true }) },
-  { label: 'Per minute', value: formatRateValue(rate.minuteRate) },
-  { label: 'Per hour', value: formatRateValue(rate.hourRate) },
-  { label: 'Per day', value: formatRateValue(rate.dayRate) },
-  { label: 'Per km', value: formatRateValue(rate.kmRate) },
-  { label: 'Min price', value: formatRateValue(rate.minPrice) },
+  ...[
+    { label: 'Fixed fee', value: formatRateValue(rate.fixedFee, { zeroAsNone: true }) },
+    {
+      label: rate.nightMinuteRate !== undefined && rate.nightMinuteRate !== rate.minuteRate
+        ? 'Drive (day)'
+        : 'Per minute',
+      value: formatRateValue(rate.minuteRate),
+    },
+    ...(rate.nightMinuteRate !== undefined && rate.nightMinuteRate !== rate.minuteRate
+      ? [{ label: 'Drive (night)', value: formatRateValue(rate.nightMinuteRate) }]
+      : []),
+    ...(rate.waitingDayRate !== undefined
+      ? [{ label: 'Wait (day)', value: formatRateValue(rate.waitingDayRate) }]
+      : []),
+    ...(rate.waitingNightRate !== undefined
+      ? [{ label: 'Wait (night)', value: formatRateValue(rate.waitingNightRate) }]
+      : []),
+    { label: 'Per hour', value: formatRateValue(rate.hourRate) },
+    { label: 'Per day', value: formatRateValue(rate.dayRate) },
+    { label: 'Per km', value: formatRateValue(rate.kmRate) },
+    ...(rate.includedKmPer24h !== undefined
+      ? [{ label: 'Included km / 24h', value: `${rate.includedKmPer24h} km` }]
+      : []),
+    { label: 'Min price', value: formatRateValue(rate.minPrice) },
+  ],
 ];
 
 export default function Home() {
   const [showScrollButtons, setShowScrollButtons] = useState(false);
+  const [tripFormValues, setTripFormValues] = useState<TripFormValues>(DEFAULT_TRIP_FORM_VALUES);
+  const tripScenario = buildTripScenario(tripFormValues);
+  const calculatorResult = tripScenario.result;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,18 +100,16 @@ export default function Home() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-800 bg-zinc-900/50 text-xs text-zinc-400 mb-8">
             <Zap className="w-3 h-3 text-orange-400" />
-            Compare CityBee, Bolt & CarGuru instantly
+            shary compares CityBee, Bolt & CarGuru instantly
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-            <span className="gradient-text">Car Sharing</span>
-            <br />
-            <span className="text-white">Calculator LV</span>
+            <span className="gradient-text">shary</span>
           </h1>
 
           <p className="mt-6 text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
             Find the most cost-effective car sharing option for your trip.
-            We compare all packages and standard rates to save you money.
+            shary compares all packages and standard rates to save you money.
           </p>
 
           <div className="flex justify-center gap-8 mt-12">
@@ -124,39 +145,22 @@ export default function Home() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <Calculator />
+          <Calculator
+            defaultValues={DEFAULT_TRIP_FORM_VALUES}
+            result={calculatorResult}
+            showResult={tripScenario.isValid}
+            onFormChange={setTripFormValues}
+          />
         </motion.div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="glass-card p-6"
-          >
-            <h2 className="text-xl font-semibold text-white mb-1">Price vs Time</h2>
-            <p className="text-sm text-zinc-500 mb-6">
-              Bubble size represents distance. Hover for details.
-            </p>
-            <PriceComparisonChart type="time" />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="glass-card p-6"
-          >
-            <h2 className="text-xl font-semibold text-white mb-1">Price vs Distance</h2>
-            <p className="text-sm text-zinc-500 mb-6">
-              Bubble size represents time. Hover for details.
-            </p>
-            <PriceComparisonChart type="distance" />
-          </motion.div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <PriceComparisonChart scenario={tripScenario} />
+        </motion.div>
 
         {/* Package Comparison */}
         <motion.div
@@ -251,7 +255,7 @@ export default function Home() {
       <footer className="relative z-10 border-t border-zinc-800/50 py-8 mt-8">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <p className="text-zinc-500 text-sm">
-            Car Sharing Calculator &copy; {new Date().getFullYear()} &mdash;{' '}
+            shary &copy; {new Date().getFullYear()} &mdash;{' '}
             <a href="https://rihards.dev" className="text-zinc-400 hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
               rihards.dev
             </a>

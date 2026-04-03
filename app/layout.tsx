@@ -5,8 +5,13 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Car Sharing Calculator LV",
-  description: "Find the cheapest car sharing option between CityBee, Bolt, and CarGuru for your trip. Compare packages and get the best deal.",
+  title: "shary",
+  description: "shary compares CityBee, Bolt, and CarGuru prices so you can find the cheapest car sharing option for your trip.",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
