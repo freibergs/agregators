@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Car Sharing Calculator LV",
-  description: "Find the cheapest car sharing option between CityBee and Bolt for your trip. Compare packages and get the best deal.",
+  description: "Find the cheapest car sharing option between CityBee, Bolt, and CarGuru for your trip. Compare packages and get the best deal.",
 };
 
 export default function RootLayout({
@@ -15,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-[#0a0a0f] text-zinc-200 antialiased`}>{children}</body>
     </html>
   );
 }

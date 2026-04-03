@@ -1,214 +1,153 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import {
-  Chart as ChartJS,
-  LinearScale,
-  PointElement,
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  ZAxis,
   Tooltip,
+  ResponsiveContainer,
   Legend,
-  ScatterController,
-  TimeScale,
-  CategoryScale,
-  Title,
-  Tick,
-} from 'chart.js';
-import { Scatter } from 'react-chartjs-2';
+} from 'recharts';
 import { generateChartData, formatTime } from '../lib/data';
-
-ChartJS.register(
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend,
-  ScatterController,
-  TimeScale,
-  CategoryScale,
-  Title,
-);
 
 interface PriceComparisonChartProps {
   type: 'time' | 'distance';
 }
 
+const COLORS = {
+  CityBee: { fill: '#f97316', stroke: '#fb923c' },
+  Bolt: { fill: '#22c55e', stroke: '#4ade80' },
+  CarGuru: { fill: '#3b82f6', stroke: '#60a5fa' },
+};
+
+interface ChartPoint {
+  x: number;
+  y: number;
+  z: number;
+  name: string;
+  time: number;
+  distance: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const CustomTooltip = ({ active, payload, type }: { active?: boolean; payload?: Array<{ payload: ChartPoint }>; type: string }) => {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0].payload;
+  return (
+    <div className="glass-card px-4 py-3 border border-zinc-700/50 text-sm">
+      <p className="font-semibold text-white mb-1">{data.name}</p>
+      <div className="space-y-0.5 text-zinc-400">
+        <p>Time: {formatTime(data.time)}</p>
+        <p>Distance: {data.distance} km</p>
+        <p className="text-white font-medium">Price: €{data.y.toFixed(2)}</p>
+      </div>
+    </div>
+  );
+};
+
+const formatXAxis = (value: number, type: string) => {
+  if (type === 'time') {
+    if (value < 60) return `${Math.round(value)}m`;
+    if (value < 1440) return `${Math.floor(value / 60)}h`;
+    return `${Math.floor(value / 1440)}d`;
+  }
+  return `${Math.round(value)}km`;
+};
+
 export default function PriceComparisonChart({ type }: PriceComparisonChartProps) {
-  // eslint-disable-next-line
-  const chartRef = useRef<any>(null);
-  // eslint-disable-next-line
-  const [chartData, setChartData] = useState<any>(null);
-  const [zoomLoaded, setZoomLoaded] = useState(false);
-
-  useEffect(() => {
-    const loadZoomPlugin = async () => {
-      const zoomPlugin = (await import('chartjs-plugin-zoom')).default;
-      ChartJS.register(zoomPlugin);
-      setZoomLoaded(true);
-    };
-
-    loadZoomPlugin();
-  }, []);
-
-  useEffect(() => {
+  const { cityBeePoints, boltPoints, carGuruPoints } = useMemo(() => {
     const { cityBeeData, boltData, carGuruData } = generateChartData([], type);
 
-    setChartData({
-      datasets: [
-        {
-          label: 'CityBee',
-          data: cityBeeData,
-          backgroundColor: 'rgba(255, 99, 0, 0.6)',
-          borderColor: 'rgb(255, 99, 0)',
-          borderWidth: 1
-        },
-        {
-          label: 'Bolt',
-          data: boltData,
-          backgroundColor: 'rgba(75, 192, 0, 0.6)',
-          borderColor: 'rgb(75, 192, 0)',
-          borderWidth: 1
-        },
-        {
-          label: 'CarGuru (Pseudo-packages)',
-          data: carGuruData,
-          backgroundColor: 'rgba(0, 99, 255, 0.6)',
-          borderColor: 'rgb(0, 99, 255)',
-          borderWidth: 1
-        },
-      ],
+    const mapPoint = (d: { x: number; y: number; r: number; name: string; time: number; distance: number }) => ({
+      x: d.x,
+      y: d.y,
+      z: d.r * 20,
+      name: d.name,
+      time: d.time,
+      distance: d.distance,
     });
+
+    return {
+      cityBeePoints: cityBeeData.map(mapPoint),
+      boltPoints: boltData.map(mapPoint),
+      carGuruPoints: carGuruData.map(mapPoint),
+    };
   }, [type]);
 
-  const maxX = type === 'time' ? 250 : 105;
-
-  const options = {
-    scales: {
-      x: {
-        type: 'linear' as const,
-        position: 'bottom' as const,
-        min: 0,
-        max: maxX,
-        title: {
-          display: true,
-          text: type === 'time' ? 'Time' : 'Distance (km)',
-        },
-        ticks: {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          callback: function (tickValue: string | number, index: number, ticks: Tick[]) {
-            const value = Number(tickValue);
-            if (type === 'time') {
-              if (value < 60) {
-                return `${Math.round(value)}m`;
-              } else if (value < 1440) {
-                let hours = Math.floor(value / 60);
-                let minutes = Math.round((value % 60) / 5) * 5;
-        
-                if (minutes === 60) {
-                  hours += 1;
-                  minutes = 0;
-                }
-        
-                return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
-              } else {
-                let days = Math.floor(value / 1440);
-                let hours = Math.round((value % 1440) / 60);
-        
-                if (hours === 24) {
-                  days += 1;
-                  hours = 0;
-                }
-        
-                return hours === 0 ? `${days}d` : `${days}d ${hours}h`;
-              }
-            }
-            return Math.round(value);
-          },
-          stepSize: 1,
-        },
-        
-        
-        
-      },
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Price (€)',
-        },
-        ticks: {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          callback: function (tickValue: string | number, index: number, ticks: Tick[]) {
-            const value = Number(tickValue);
-            return Math.round(value);
-          },
-          stepSize: 1,
-        },
-      },
-    },
-    plugins: {
-      tooltip: {
-        callbacks: {
-          // eslint-disable-next-line
-          label: (context: any) => {
-            const point = context.raw;
-            const distance = point.distance ?? point.x ?? 0;
-            const time = point.time ?? 0;
-            const price = point.y ?? 0;
-          
-            return [
-              `Distance: ${distance} km`,
-              `Time: ${formatTime(time)}`,
-              `Price: €${price.toFixed(2)}`
-            ];
-          }
-        }
-      },
-      legend: {
-        labels: {
-          // eslint-disable-next-line
-          filter: (item: any) => !item.text.includes('Standard')
-        }
-      },
-      zoom: {
-        zoom: {
-          wheel: { enabled: true },
-          pinch: { enabled: true },
-          mode: 'xy' as const,
-          onZoom: ({ chart }: { chart: ChartJS }) => {
-            const x = chart.scales.x;
-            const y = chart.scales.y;
-    
-            if (x.options.min !== 0) x.options.min = 0;
-            if (y.options.min !== 0) y.options.min = 0;
-    
-            chart.update('none');
-          }
-        },
-        pan: {
-          enabled: false,
-        },
-        limits: {
-          x: { min: 0 },
-          y: { min: 0 },
-        },
-      },
-    },
-    responsive: true,
-    maintainAspectRatio: false,
-  };
-
-  if (!zoomLoaded || !chartData) {
-    return <div className="flex h-[400px] items-center justify-center">Loading chart...</div>;
-  }
-
   return (
-    <div
-      className="h-[400px] w-full"
-      onDoubleClick={() => {
-        chartRef.current?.resetZoom();
-      }}
-      title="Scroll to zoom, double-click to reset"
-    >
-      <Scatter ref={chartRef} data={chartData} options={options} />
+    <div className="h-[400px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+          <XAxis
+            type="number"
+            dataKey="x"
+            name={type === 'time' ? 'Time' : 'Distance'}
+            tickFormatter={(v) => formatXAxis(v, type)}
+            stroke="#3f3f46"
+            tick={{ fill: '#71717a', fontSize: 11 }}
+            axisLine={{ stroke: '#27272a' }}
+            label={{
+              value: type === 'time' ? 'Time' : 'Distance (km)',
+              position: 'bottom',
+              offset: 5,
+              fill: '#52525b',
+              fontSize: 12,
+            }}
+          />
+          <YAxis
+            type="number"
+            dataKey="y"
+            name="Price"
+            tickFormatter={(v) => `€${Math.round(v)}`}
+            stroke="#3f3f46"
+            tick={{ fill: '#71717a', fontSize: 11 }}
+            axisLine={{ stroke: '#27272a' }}
+            label={{
+              value: 'Price (€)',
+              angle: -90,
+              position: 'insideLeft',
+              offset: 10,
+              fill: '#52525b',
+              fontSize: 12,
+            }}
+          />
+          <ZAxis type="number" dataKey="z" range={[40, 400]} />
+          <Tooltip content={<CustomTooltip type={type} />} />
+          <Legend
+            wrapperStyle={{ paddingTop: '10px' }}
+            formatter={(value: string) => (
+              <span className="text-zinc-400 text-xs">{value}</span>
+            )}
+          />
+          <Scatter
+            name="CityBee"
+            data={cityBeePoints}
+            fill={COLORS.CityBee.fill}
+            stroke={COLORS.CityBee.stroke}
+            strokeWidth={1}
+            fillOpacity={0.6}
+          />
+          <Scatter
+            name="Bolt"
+            data={boltPoints}
+            fill={COLORS.Bolt.fill}
+            stroke={COLORS.Bolt.stroke}
+            strokeWidth={1}
+            fillOpacity={0.6}
+          />
+          <Scatter
+            name="CarGuru"
+            data={carGuruPoints}
+            fill={COLORS.CarGuru.fill}
+            stroke={COLORS.CarGuru.stroke}
+            strokeWidth={1}
+            fillOpacity={0.6}
+          />
+        </ScatterChart>
+      </ResponsiveContainer>
     </div>
   );
 }
